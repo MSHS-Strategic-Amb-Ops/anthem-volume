@@ -640,418 +640,418 @@ ________________________________________________________________________________
 <br/>
 
 
-## Volume Comparison 
-```{r Volume Comparison by Group All, echo = FALSE, warning = FALSE, message = FALSE}
+<!-- ## Volume Comparison  -->
+<!-- ```{r Volume Comparison by Group All, echo = FALSE, warning = FALSE, message = FALSE} -->
 
 
-htmltools::browsable(
-  tagList(
-    tags$button(
-      tagList(fontawesome::fa("download"), "Download Table"),
-      onclick = "Reactable.downloadDataCSV('anthem-volume', 'Anthem Volume Impact')"
-    ),
+<!-- htmltools::browsable( -->
+<!--   tagList( -->
+<!--     tags$button( -->
+<!--       tagList(fontawesome::fa("download"), "Download Table"), -->
+<!--       onclick = "Reactable.downloadDataCSV('anthem-volume', 'Anthem Volume Impact')" -->
+<!--     ), -->
 
-# htmltools::browsable(
-#   tagList(
-#     div(tags$label("Summary by", `for` = "access-roi")),
-#     tags$select(
-#       id = "access-roi",
-#       onchange = "Reactable.setGroupBy('access-metrics', this.value ? [this.value] : [])",
-#       tags$option("None", value = ""),
-#       lapply(c("Year", "Month"), tags$option)
-#     ),
-# 
-#     tags$hr("aria-hidden" = "true"),
-    
-reactable(
-  volume_comparison_group_summary2,
-  elementId = "anthem-volume",
-  # elementId = "referral-vol-download-table",
-  style = list(fontFamily = 'Calibri',
-                 fontSize = '14px'),
-    defaultColDef = colDef(align = "left",
-                           headerStyle = list(fontWeight = "Bold", fontSize = "14px"),
-                           headerClass = "bar-sort-header"),
-  # RowStyle = function(index) {
-  #           if (index %in% c(nrow(referral_vol_site_data_mshs))) {
-  #             list(`border-top` = "2px solid rgb(184,184,184)",
-  #                  fontWeight = "Bold")
-  #           }
-  #         },
-    highlight = TRUE,
-    # filterable = TRUE,
-    pagination = FALSE,
-    # height = 800,
-    wrap = TRUE,
-  searchable = TRUE,
+<!-- # htmltools::browsable( -->
+<!-- #   tagList( -->
+<!-- #     div(tags$label("Summary by", `for` = "access-roi")), -->
+<!-- #     tags$select( -->
+<!-- #       id = "access-roi", -->
+<!-- #       onchange = "Reactable.setGroupBy('access-metrics', this.value ? [this.value] : [])", -->
+<!-- #       tags$option("None", value = ""), -->
+<!-- #       lapply(c("Year", "Month"), tags$option) -->
+<!-- #     ), -->
+<!-- #  -->
+<!-- #     tags$hr("aria-hidden" = "true"), -->
 
-  groupBy = c("MSHS", "SITE", "DEPT_SPECIALTY_NAME"),
+<!-- reactable( -->
+<!--   volume_comparison_group_summary2, -->
+<!--   elementId = "anthem-volume", -->
+<!--   # elementId = "referral-vol-download-table", -->
+<!--   style = list(fontFamily = 'Calibri', -->
+<!--                  fontSize = '14px'), -->
+<!--     defaultColDef = colDef(align = "left", -->
+<!--                            headerStyle = list(fontWeight = "Bold", fontSize = "14px"), -->
+<!--                            headerClass = "bar-sort-header"), -->
+<!--   # RowStyle = function(index) { -->
+<!--   #           if (index %in% c(nrow(referral_vol_site_data_mshs))) { -->
+<!--   #             list(`border-top` = "2px solid rgb(184,184,184)", -->
+<!--   #                  fontWeight = "Bold") -->
+<!--   #           } -->
+<!--   #         }, -->
+<!--     highlight = TRUE, -->
+<!--     # filterable = TRUE, -->
+<!--     pagination = FALSE, -->
+<!--     # height = 800, -->
+<!--     wrap = TRUE, -->
+<!--   searchable = TRUE, -->
 
-  columnGroups = list(
-    colGroup(name = "", columns = c("MSHS", "SITE", "DEPT_SPECIALTY_NAME", "DEPARTMENT_NAME", "DEPARTMENT_ID"),
-             headerStyle = list(color = "black", fontSize = "15px"),
-             sticky = "left"),
-    colGroup(name = paste0("2025 Completed Visits (", format(as.Date(date_start_2025), "%m/%d"),"-",format(as.Date(date_end_2025), "%m/%d"),")"),
-             columns = c("Total_2025", "Anthem_2025", "Medicare_Advantage_2025", "MSS_Attributed_2025", "Other_Payor_2025"),
-             headerStyle = list(background = "#7f7f7f", color = "white", fontSize = "15px")),
-    colGroup(name = paste0("2026 Completed Visits (", format(as.Date(date_start_2026), "%m/%d"),"-",format(as.Date(date_end_2026), "%m/%d"),")"),
-             columns = c("Total_2026", "Anthem_2026", "Medicare_Advantage_2026", "MSS_Attributed_2026", "Other_Payor_2026"),
-             headerStyle = list(background = "#212070", color = "white", fontSize = "15px")),
-    colGroup(name = paste0("Volume Variance"),
-             columns = c("Total_Var", "Anthem_Var", "Medicare_Advantage_Var", "MSS_Attributed_Var", "Other_Payor_Var"),
-             headerStyle = list(background = "#d80b8c", color = "white", fontSize = "15px")),
-    colGroup(name = paste0("Volume Variance %"),
-             columns = c("Total_Var_Perc", "Anthem_Var_Perc", "Medicare_Advantage_Var_Perc", "MSS_Attributed_Var_Perc", "Other_Payor_Var_Perc"),
-             headerStyle = list(background = "#00aeef", color = "white", fontSize = "15px"))
-    # colGroup(name = paste0("New Patient Capture*"),
-    #          columns = c("NEW_LOS", "NEW_LOS_baseline", "new_pt_var_baseline",
-    #                      "perc_new_los", "perc_new_los_baseline", "perc_new_los_var_baseline",
-    #                      "perc_new_pt_target", "perc_new_los_var_target"),
-    #          headerStyle = list(background = "#a5a7a5", color = "white", fontSize = "15px"))
-    ),
+<!--   groupBy = c("MSHS", "SITE", "DEPT_SPECIALTY_NAME"), -->
 
-  columns = list(
+<!--   columnGroups = list( -->
+<!--     colGroup(name = "", columns = c("MSHS", "SITE", "DEPT_SPECIALTY_NAME", "DEPARTMENT_NAME", "DEPARTMENT_ID"), -->
+<!--              headerStyle = list(color = "black", fontSize = "15px"), -->
+<!--              sticky = "left"), -->
+<!--     colGroup(name = paste0("2025 Completed Visits (", format(as.Date(date_start_2025), "%m/%d"),"-",format(as.Date(date_end_2025), "%m/%d"),")"), -->
+<!--              columns = c("Total_2025", "Anthem_2025", "Medicare_Advantage_2025", "MSS_Attributed_2025", "Other_Payor_2025"), -->
+<!--              headerStyle = list(background = "#7f7f7f", color = "white", fontSize = "15px")), -->
+<!--     colGroup(name = paste0("2026 Completed Visits (", format(as.Date(date_start_2026), "%m/%d"),"-",format(as.Date(date_end_2026), "%m/%d"),")"), -->
+<!--              columns = c("Total_2026", "Anthem_2026", "Medicare_Advantage_2026", "MSS_Attributed_2026", "Other_Payor_2026"), -->
+<!--              headerStyle = list(background = "#212070", color = "white", fontSize = "15px")), -->
+<!--     colGroup(name = paste0("Volume Variance"), -->
+<!--              columns = c("Total_Var", "Anthem_Var", "Medicare_Advantage_Var", "MSS_Attributed_Var", "Other_Payor_Var"), -->
+<!--              headerStyle = list(background = "#d80b8c", color = "white", fontSize = "15px")), -->
+<!--     colGroup(name = paste0("Volume Variance %"), -->
+<!--              columns = c("Total_Var_Perc", "Anthem_Var_Perc", "Medicare_Advantage_Var_Perc", "MSS_Attributed_Var_Perc", "Other_Payor_Var_Perc"), -->
+<!--              headerStyle = list(background = "#00aeef", color = "white", fontSize = "15px")) -->
+<!--     # colGroup(name = paste0("New Patient Capture*"), -->
+<!--     #          columns = c("NEW_LOS", "NEW_LOS_baseline", "new_pt_var_baseline", -->
+<!--     #                      "perc_new_los", "perc_new_los_baseline", "perc_new_los_var_baseline", -->
+<!--     #                      "perc_new_pt_target", "perc_new_los_var_target"), -->
+<!--     #          headerStyle = list(background = "#a5a7a5", color = "white", fontSize = "15px")) -->
+<!--     ), -->
 
-     MSHS = colDef(
-      name = "MSHS",
-      maxWidth = 100),
-     
-     SITE = colDef(
-      name = "Site",
-      minWidth = 200),
-     
-     DEPT_SPECIALTY_NAME = colDef(
-      name = "Specialty",
-      minWidth = 200),
-     
-     DEPARTMENT_NAME = colDef(
-      name = "Department",
-      minWidth = 200),
-     
-     DEPARTMENT_ID = colDef(
-      name = "Department ID",
-      minWidth = 120),
-     
-     Total_2025 = colDef(
-      name = "Total",
-      maxWidth = 80,
-      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     Anthem_2025 = colDef(
-      name = "Anthem",
-      maxWidth = 80,
-      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     Medicare_Advantage_2025 = colDef(
-      name = "Medicare Advantage",
-      maxWidth = 80,
-      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     MSS_Attributed_2025 = colDef(
-      name = "MSS Attributed",
-      maxWidth = 80,
-      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
+<!--   columns = list( -->
 
-     Other_Payor_2025 = colDef(
-      name = "Other Payor",
-      maxWidth = 80,
-      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     Total_2026 = colDef(
-      name = "Total",
-      maxWidth = 80,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     Anthem_2026 = colDef(
-      name = "Anthem",
-      maxWidth = 80,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     Medicare_Advantage_2026 = colDef(
-      name = "Medicare Advantage",
-      maxWidth = 80,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     MSS_Attributed_2026 = colDef(
-      name = "MSS Attributed",
-      maxWidth = 80,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
+<!--      MSHS = colDef( -->
+<!--       name = "MSHS", -->
+<!--       maxWidth = 100), -->
 
-     Other_Payor_2026 = colDef(
-      name = "Other Payor",
-      maxWidth = 80,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     Total_Var = colDef(
-      name = "Total",
-      maxWidth = 80,
-      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalTotal_2025 = 0
-        let totalTotal_2026 = 0
-        rows.forEach(function(row) {
-          totalTotal_2025 += row['Total_2025']
-          totalTotal_2026 += row['Total_2026']
-        })
-        return (totalTotal_2026 - totalTotal_2025) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['Total_Var']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     Anthem_Var = colDef(
-      name = "Anthem",
-      maxWidth = 80,
-      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalAnthem_2025 = 0
-        let totalAnthem_2026 = 0
-        rows.forEach(function(row) {
-          totalAnthem_2025 += row['Anthem_2025']
-          totalAnthem_2026 += row['Anthem_2026']
-        })
-        return (totalAnthem_2026 - totalAnthem_2025) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['Anthem_Var']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     Medicare_Advantage_Var = colDef(
-      name = "Medicare Advantage",
-      maxWidth = 80,
-      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalMedicare_Advantage_2025 = 0
-        let totalMedicare_Advantage_2026 = 0
-        rows.forEach(function(row) {
-          totalMedicare_Advantage_2025 += row['Medicare_Advantage_2025']
-          totalMedicare_Advantage_2026 += row['Medicare_Advantage_2026']
-        })
-        return (totalMedicare_Advantage_2026 - totalMedicare_Advantage_2025) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['Medicare_Advantage_Var']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     MSS_Attributed_Var = colDef(
-      name = "MSS Attributed",
-      maxWidth = 80,
-      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalMSS_Attributed_2025 = 0
-        let totalMSS_Attributed_2026 = 0
-        rows.forEach(function(row) {
-          totalMSS_Attributed_2025 += row['MSS_Attributed_2025']
-          totalMSS_Attributed_2026 += row['MSS_Attributed_2026']
-        })
-        return (totalMSS_Attributed_2026 - totalMSS_Attributed_2025) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['MSS_Attributed_Var']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     Other_Payor_Var = colDef(
-      name = "Other Payor",
-      maxWidth = 80,
-      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalOther_Payor_2025 = 0
-        let totalOther_Payor_2026 = 0
-        rows.forEach(function(row) {
-          totalOther_Payor_2025 += row['Other_Payor_2025']
-          totalOther_Payor_2026 += row['Other_Payor_2026']
-        })
-        return (totalOther_Payor_2026 - totalOther_Payor_2025) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['Other_Payor_Var']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     Total_Var_Perc = colDef(
-      name = "Total",
-      maxWidth = 80,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalTotal_2025 = 0
-        let totalTotal_2026 = 0
-        rows.forEach(function(row) {
-          totalTotal_2025 += row['Total_2025']
-          totalTotal_2026 += row['Total_2026']
-        })
-        return (totalTotal_2026 - totalTotal_2025) / totalTotal_2025 || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['Total_Var_Perc']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)),
-     
-     Anthem_Var_Perc = colDef(
-      name = "Anthem",
-      maxWidth = 80,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalAnthem_2025 = 0
-        let totalAnthem_2026 = 0
-        rows.forEach(function(row) {
-          totalAnthem_2025 += row['Anthem_2025']
-          totalAnthem_2026 += row['Anthem_2026']
-        })
-        return (totalAnthem_2026 - totalAnthem_2025) / totalAnthem_2025 || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['Anthem_Var_Perc']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)),
-     
-     Medicare_Advantage_Var_Perc = colDef(
-      name = "Medicare Advantage",
-      maxWidth = 80,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalMedicare_Advantage_2025 = 0
-        let totalMedicare_Advantage_2026 = 0
-        rows.forEach(function(row) {
-          totalMedicare_Advantage_2025 += row['Medicare_Advantage_2025']
-          totalMedicare_Advantage_2026 += row['Medicare_Advantage_2026']
-        })
-        return (totalMedicare_Advantage_2026 - totalMedicare_Advantage_2025) / totalMedicare_Advantage_2025 || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['Medicare_Advantage_Var_Perc']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)),
-     
-     MSS_Attributed_Var_Perc = colDef(
-      name = "MSS Attributed",
-      maxWidth = 80,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalMSS_Attributed_2025 = 0
-        let totalMSS_Attributed_2026 = 0
-        rows.forEach(function(row) {
-          totalMSS_Attributed_2025 += row['MSS_Attributed_2025']
-          totalMSS_Attributed_2026 += row['MSS_Attributed_2026']
-        })
-        return (totalMSS_Attributed_2026 - totalMSS_Attributed_2025) / totalMSS_Attributed_2025 || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['MSS_Attributed_Var_Perc']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)),
-     
-     Other_Payor_Var_Perc = colDef(
-      name = "Other Payor",
-      maxWidth = 80,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalOther_Payor_2025 = 0
-        let totalOther_Payor_2026 = 0
-        rows.forEach(function(row) {
-          totalOther_Payor_2025 += row['Other_Payor_2025']
-          totalOther_Payor_2026 += row['Other_Payor_2026']
-        })
-        return (totalOther_Payor_2026 - totalOther_Payor_2025) / totalOther_Payor_2025 || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['Other_Payor_Var_Perc']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1))
-     
-  ) # Close Columns
+<!--      SITE = colDef( -->
+<!--       name = "Site", -->
+<!--       minWidth = 200), -->
 
-  ) # Close Reactable
-) # Close Taglist
-) # Close htmltools
+<!--      DEPT_SPECIALTY_NAME = colDef( -->
+<!--       name = "Specialty", -->
+<!--       minWidth = 200), -->
 
-```
+<!--      DEPARTMENT_NAME = colDef( -->
+<!--       name = "Department", -->
+<!--       minWidth = 200), -->
+
+<!--      DEPARTMENT_ID = colDef( -->
+<!--       name = "Department ID", -->
+<!--       minWidth = 120), -->
+
+<!--      Total_2025 = colDef( -->
+<!--       name = "Total", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      Anthem_2025 = colDef( -->
+<!--       name = "Anthem", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      Medicare_Advantage_2025 = colDef( -->
+<!--       name = "Medicare Advantage", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      MSS_Attributed_2025 = colDef( -->
+<!--       name = "MSS Attributed", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      Other_Payor_2025 = colDef( -->
+<!--       name = "Other Payor", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      Total_2026 = colDef( -->
+<!--       name = "Total", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      Anthem_2026 = colDef( -->
+<!--       name = "Anthem", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      Medicare_Advantage_2026 = colDef( -->
+<!--       name = "Medicare Advantage", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      MSS_Attributed_2026 = colDef( -->
+<!--       name = "MSS Attributed", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      Other_Payor_2026 = colDef( -->
+<!--       name = "Other Payor", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      Total_Var = colDef( -->
+<!--       name = "Total", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalTotal_2025 = 0 -->
+<!--         let totalTotal_2026 = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalTotal_2025 += row['Total_2025'] -->
+<!--           totalTotal_2026 += row['Total_2026'] -->
+<!--         }) -->
+<!--         return (totalTotal_2026 - totalTotal_2025) || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['Total_Var'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      Anthem_Var = colDef( -->
+<!--       name = "Anthem", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalAnthem_2025 = 0 -->
+<!--         let totalAnthem_2026 = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalAnthem_2025 += row['Anthem_2025'] -->
+<!--           totalAnthem_2026 += row['Anthem_2026'] -->
+<!--         }) -->
+<!--         return (totalAnthem_2026 - totalAnthem_2025) || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['Anthem_Var'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      Medicare_Advantage_Var = colDef( -->
+<!--       name = "Medicare Advantage", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalMedicare_Advantage_2025 = 0 -->
+<!--         let totalMedicare_Advantage_2026 = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalMedicare_Advantage_2025 += row['Medicare_Advantage_2025'] -->
+<!--           totalMedicare_Advantage_2026 += row['Medicare_Advantage_2026'] -->
+<!--         }) -->
+<!--         return (totalMedicare_Advantage_2026 - totalMedicare_Advantage_2025) || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['Medicare_Advantage_Var'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      MSS_Attributed_Var = colDef( -->
+<!--       name = "MSS Attributed", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalMSS_Attributed_2025 = 0 -->
+<!--         let totalMSS_Attributed_2026 = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalMSS_Attributed_2025 += row['MSS_Attributed_2025'] -->
+<!--           totalMSS_Attributed_2026 += row['MSS_Attributed_2026'] -->
+<!--         }) -->
+<!--         return (totalMSS_Attributed_2026 - totalMSS_Attributed_2025) || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['MSS_Attributed_Var'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      Other_Payor_Var = colDef( -->
+<!--       name = "Other Payor", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalOther_Payor_2025 = 0 -->
+<!--         let totalOther_Payor_2026 = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalOther_Payor_2025 += row['Other_Payor_2025'] -->
+<!--           totalOther_Payor_2026 += row['Other_Payor_2026'] -->
+<!--         }) -->
+<!--         return (totalOther_Payor_2026 - totalOther_Payor_2025) || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['Other_Payor_Var'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      Total_Var_Perc = colDef( -->
+<!--       name = "Total", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalTotal_2025 = 0 -->
+<!--         let totalTotal_2026 = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalTotal_2025 += row['Total_2025'] -->
+<!--           totalTotal_2026 += row['Total_2026'] -->
+<!--         }) -->
+<!--         return (totalTotal_2026 - totalTotal_2025) / totalTotal_2025 || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['Total_Var_Perc'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(percent = TRUE, digits = 1)), -->
+
+<!--      Anthem_Var_Perc = colDef( -->
+<!--       name = "Anthem", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalAnthem_2025 = 0 -->
+<!--         let totalAnthem_2026 = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalAnthem_2025 += row['Anthem_2025'] -->
+<!--           totalAnthem_2026 += row['Anthem_2026'] -->
+<!--         }) -->
+<!--         return (totalAnthem_2026 - totalAnthem_2025) / totalAnthem_2025 || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['Anthem_Var_Perc'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(percent = TRUE, digits = 1)), -->
+
+<!--      Medicare_Advantage_Var_Perc = colDef( -->
+<!--       name = "Medicare Advantage", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalMedicare_Advantage_2025 = 0 -->
+<!--         let totalMedicare_Advantage_2026 = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalMedicare_Advantage_2025 += row['Medicare_Advantage_2025'] -->
+<!--           totalMedicare_Advantage_2026 += row['Medicare_Advantage_2026'] -->
+<!--         }) -->
+<!--         return (totalMedicare_Advantage_2026 - totalMedicare_Advantage_2025) / totalMedicare_Advantage_2025 || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['Medicare_Advantage_Var_Perc'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(percent = TRUE, digits = 1)), -->
+
+<!--      MSS_Attributed_Var_Perc = colDef( -->
+<!--       name = "MSS Attributed", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalMSS_Attributed_2025 = 0 -->
+<!--         let totalMSS_Attributed_2026 = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalMSS_Attributed_2025 += row['MSS_Attributed_2025'] -->
+<!--           totalMSS_Attributed_2026 += row['MSS_Attributed_2026'] -->
+<!--         }) -->
+<!--         return (totalMSS_Attributed_2026 - totalMSS_Attributed_2025) / totalMSS_Attributed_2025 || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['MSS_Attributed_Var_Perc'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(percent = TRUE, digits = 1)), -->
+
+<!--      Other_Payor_Var_Perc = colDef( -->
+<!--       name = "Other Payor", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalOther_Payor_2025 = 0 -->
+<!--         let totalOther_Payor_2026 = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalOther_Payor_2025 += row['Other_Payor_2025'] -->
+<!--           totalOther_Payor_2026 += row['Other_Payor_2026'] -->
+<!--         }) -->
+<!--         return (totalOther_Payor_2026 - totalOther_Payor_2025) / totalOther_Payor_2025 || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['Other_Payor_Var_Perc'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(percent = TRUE, digits = 1)) -->
+
+<!--   ) # Close Columns -->
+
+<!--   ) # Close Reactable -->
+<!-- ) # Close Taglist -->
+<!-- ) # Close htmltools -->
+
+<!-- ``` -->
 
 
-## Volume Comparison (Sites Only)
+## Anthem Volume Impact
 ```{r Volume Comparison by Group Sites Only, echo = FALSE, warning = FALSE, message = FALSE}
 
 
@@ -1464,7 +1464,7 @@ reactable(
 ```
 
 
-## 2025 vs. 2026 YTD Volume Comparison
+## Completed and Scheduled Appts
 ```{r Volume Past and Future All, echo = FALSE, warning = FALSE, message = FALSE}
 
 
