@@ -477,8 +477,10 @@ volume_comparison_check <- access_raw_tbl %>%
               distinct(), 
             by = c("VISITPLAN" = "PLAN_NAME")) %>%
   left_join(tbl(conn2, "PATIENT_FYI_FLAGS") %>%
-              dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C) %>%
-              filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)),
+              filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)) %>%
+              group_by(PATIENT_ID) %>%
+              filter(LAST_UPDATE_INST == max(LAST_UPDATE_INST, na.rm = TRUE)) %>%
+              dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C),
             by = c("PAT_ID" = "PATIENT_ID")) %>%
   mutate(FINCLASS = case_when(PRD_TYPE == "EXCHANGE" ~ "EXCHANGE", TRUE ~ FINCLASS)) %>%
   mutate(MSS_GROUP = case_when(GROUP_NUM %in% mss_exclusion_list ~ "MSS", TRUE ~ "")) %>%
@@ -560,6 +562,28 @@ appt_day_comparison <- volume_comparison2_group %>%
 
 ```{r Current and Next 14 Days Volume}
 
+# flag2 <- tbl(conn2, "PATIENT_FYI_FLAGS") %>%
+#   group_by(PATIENT_ID) %>%
+#   filter(LAST_UPDATE_INST == max(LAST_UPDATE_INST, na.rm = TRUE)) %>%
+#   collect()
+
+
+# flag <- tbl(conn2, "PATIENT_FYI_FLAGS") %>%
+#   filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)) %>%
+#   group_by(PATIENT_ID) %>%
+#   filter(LAST_UPDATE_INST == max(LAST_UPDATE_INST, na.rm = TRUE)) %>%
+#   dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C) %>%
+#   collect()
+#               
+#   
+# 
+# check <- access_raw_tbl %>%
+#   filter(MRN == "4187152") %>%
+#   group_by(PAT_ID, MRN) %>%
+#   summarise(total = n()) %>%
+#   collect()
+  
+  
 volume_comparison <- access_raw_tbl %>%
   left_join(finclass_tbl %>% 
               filter(PRD_TYPE == "EXCHANGE") %>%
@@ -567,8 +591,10 @@ volume_comparison <- access_raw_tbl %>%
               distinct(), 
             by = c("VISITPLAN" = "PLAN_NAME")) %>%
   left_join(tbl(conn2, "PATIENT_FYI_FLAGS") %>%
-              dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C) %>%
-              filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)),
+              filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)) %>%
+              group_by(PATIENT_ID) %>%
+              filter(LAST_UPDATE_INST == max(LAST_UPDATE_INST, na.rm = TRUE)) %>%
+              dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C),
             by = c("PAT_ID" = "PATIENT_ID")) %>%
   mutate(FINCLASS = case_when(PRD_TYPE == "EXCHANGE" ~ "EXCHANGE", TRUE ~ FINCLASS)) %>%
   mutate(MSS_GROUP = case_when(GROUP_NUM %in% mss_exclusion_list ~ "MSS", TRUE ~ "")) %>%
@@ -579,7 +605,9 @@ volume_comparison <- access_raw_tbl %>%
   filter((CONTACT_DATE <= TO_DATE(date_next_14days, "YYYY-MM-DD HH24:MI:SS"))) %>%
   mutate(appt_year = year(CONTACT_DATE),
          appt_month = month(CONTACT_DATE)) %>%
+  # filter(SITE == "MSUS") %>%
   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, DERIVED_STATUS_DESC,
+           # PAT_ENC_CSN_ID, PAT_NAME, MRN, APPT_DTTM, PROV_NAME_WID,
            CONTACT_DATE, appt_year, appt_month, PAT_FLAG_TYPE_C, MSS_GROUP, ANTHEM) %>%
   summarise(total = n()) %>%
   collect()
@@ -1812,8 +1840,10 @@ no_show <- access_raw_tbl %>%
               distinct(), 
             by = c("VISITPLAN" = "PLAN_NAME")) %>%
   left_join(tbl(conn2, "PATIENT_FYI_FLAGS") %>%
-              dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C) %>%
-              filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)),
+              filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)) %>%
+              group_by(PATIENT_ID) %>%
+              filter(LAST_UPDATE_INST == max(LAST_UPDATE_INST, na.rm = TRUE)) %>%
+              dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C),
             by = c("PAT_ID" = "PATIENT_ID")) %>%
   left_join(tbl(conn2, "CLARITY_SER") %>% select(PROV_ID, PROV_TYPE)) %>%
   mutate(FINCLASS = case_when(PRD_TYPE == "EXCHANGE" ~ "EXCHANGE", TRUE ~ FINCLASS)) %>%
