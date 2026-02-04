@@ -458,10 +458,10 @@ coc_flag <- tbl(conn2, "PATIENT_FYI_FLAGS") %>%
 
 
 date_start_2025 <- format(as.Date("2025-01-06"), "%Y-%m-%d")
-date_end_2025 <- format(as.Date(paste0("2025-",format(Sys.Date(), "%m-%d"))), "%Y-%m-%d")
+date_end_2025 <- format(as.Date(paste0("2025-",format(Sys.Date()-1, "%m-%d"))), "%Y-%m-%d")
 
 date_start_2026 <- format(as.Date("2026-01-05"), "%Y-%m-%d")
-date_end_2026 <- format(Sys.Date()-1, "%Y-%m-%d")
+date_end_2026 <- format(Sys.Date()-2, "%Y-%m-%d")
 
 
 # jan_vol_plans <- jan_vol %>%
