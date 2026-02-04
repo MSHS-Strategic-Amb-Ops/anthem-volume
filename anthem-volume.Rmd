@@ -428,6 +428,16 @@ anthem_mcr_adv_list <- as.vector(unique(anthem_plans2$BENEFIT_PLAN_NAME[anthem_p
 
 mss_exclusion <- read_excel("MSS Exclusions.xlsx")
 mss_exclusion_list <- as.vector(unique(mss_exclusion$GROUP_NUM))
+mss_exclusion_paul_weiss <- as.vector(unique(mss_exclusion$GROUP_NUM[
+    str_detect(mss_exclusion$GROUP_NAME, "PAUL WEISS")
+  ]))
+mss_exclusion_32bj <- as.vector(unique(mss_exclusion$GROUP_NUM[
+    str_detect(mss_exclusion$GROUP_NAME, "32BJ")
+  ]))
+mss_exclusion_millbank <- as.vector(unique(mss_exclusion$GROUP_NUM[
+    str_detect(mss_exclusion$GROUP_NAME, "MILBANK")
+  ]))
+
 
 coc_flag <- tbl(conn2, "PATIENT_FYI_FLAGS") %>%
   dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C) %>%
@@ -2167,7 +2177,7 @@ reactable(
         return (totalTotal_NS_SDC) / (totalTotal_NS_SDC + totalTotal_Arrived) || '-'
       }"),
       style = JS("function(rowInfo) {
-        var value = rowInfo.row['CoC_NS_SDC_Rate']
+        var value = rowInfo.row['Total_NS_SDC_Rate']
         if (value > 0) {
           var color = '#e00000'
         } else {
@@ -2215,7 +2225,7 @@ reactable(
         return (totalNon_CoC_NS_SDC) / (totalNon_CoC_NS_SDC + totalNon_CoC_Arrived) || '-'
       }"),
       style = JS("function(rowInfo) {
-        var value = rowInfo.row['CoC_NS_SDC_Rate']
+        var value = rowInfo.row['Non_CoC_NS_SDC_Rate']
         if (value > 0) {
           var color = '#e00000'
         } else {
@@ -2239,7 +2249,7 @@ reactable(
         return (totalMSS_Attributed_NS_SDC) / (totalMSS_Attributed_NS_SDC + totalMSS_Attributed_Arrived) || '-'
       }"),
       style = JS("function(rowInfo) {
-        var value = rowInfo.row['CoC_NS_SDC_Rate']
+        var value = rowInfo.row['MSS_Attributed_NS_SDC_Rat']
         if (value > 0) {
           var color = '#e00000'
         } else {
@@ -2263,7 +2273,7 @@ reactable(
         return (totalOther_Payor_NS_SDC) / (totalOther_Payor_NS_SDC + totalOther_Payor_Arrived) || '-'
       }"),
       style = JS("function(rowInfo) {
-        var value = rowInfo.row['CoC_NS_SDC_Rate']
+        var value = rowInfo.row['Other_Payor_NS_SDC_Rate']
         if (value > 0) {
           var color = '#e00000'
         } else {
