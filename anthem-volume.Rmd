@@ -400,8 +400,8 @@ visitFact_conn <- tbl(conn5, dbplyr::ident_q('"Caboodle"."VisitFact"'))
 
 report_run_date <- Sys.Date()
 date_start <- format(Sys.Date(), "%Y-%m-%d")
-date_next_14days <- format(Sys.Date() +13, "%Y-%m-%d")
-slot_date_start <- format(Sys.Date() -2, "%Y-%m-%d")
+date_next_14days <- format(Sys.Date() +12, "%Y-%m-%d")
+slot_date_start <- format(Sys.Date() -1, "%Y-%m-%d")
 # date_start <- paste0(format(Sys.Date(), "%Y-%m"),"-01")
 
 current_year <- format(report_run_date, "%Y")
@@ -486,8 +486,8 @@ volume_comparison_check <- access_raw_tbl %>%
   mutate(ANTHEM = case_when(VISITPLAN %in% anthem_mcr_adv_list ~ "MCR Advantage", TRUE ~ ANTHEM)) %>%
   filter(year(CONTACT_DATE)>=2024) %>%
   filter(DERIVED_STATUS_DESC == "Arrived") %>%
-  filter((CONTACT_DATE >= TO_DATE(date_start_2025, "YYYY-MM-DD HH24:MI:SS") & CONTACT_DATE <= TO_DATE(date_end_2025, "YYYY-MM-DD HH24:MI:SS")) |
-           (CONTACT_DATE >= TO_DATE(date_start_2026, "YYYY-MM-DD HH24:MI:SS") & CONTACT_DATE <= TO_DATE(date_end_2026, "YYYY-MM-DD HH24:MI:SS"))) %>%
+  filter((CONTACT_DATE >= TO_DATE(date_start_2025, "YYYY-MM-DD HH24:MI:SS") & CONTACT_DATE < TO_DATE(date_end_2025, "YYYY-MM-DD HH24:MI:SS")) |
+           (CONTACT_DATE >= TO_DATE(date_start_2026, "YYYY-MM-DD HH24:MI:SS") & CONTACT_DATE < TO_DATE(date_end_2026, "YYYY-MM-DD HH24:MI:SS"))) %>%
   mutate(appt_year = year(CONTACT_DATE),
          appt_month = month(CONTACT_DATE)) %>%
   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, DERIVED_STATUS_DESC,
@@ -1937,6 +1937,11 @@ slot_merged <- slot_data_prc_tbl %>%
               dplyr::select(SITE, SPECIALTY, DEPARTMENT_ID) %>%
               rename("DEPT_SPECIALTY_NAME" = SPECIALTY)) 
 
+
+check <- slot_merged %>% 
+  mutate(slot_date = sql("TRUNC(SLOT_BEGIN_TIME)")) %>%
+  group_by(slot_date) %>%
+  summarise(total = sum(ARRIVED_MIN, na.rm = T)) %>%
 
 slot_util_prov <- slot_merged %>%
   mutate(slot_date = sql("TRUNC(SLOT_BEGIN_TIME)")) %>%
