@@ -417,6 +417,13 @@ current_year_month <- paste0(current_year,"-",current_month)
 
 ```{r}
 
+# access <- access_raw_tbl %>%
+#   filter(DERIVED_STATUS_DESC== "Arrived") %>%
+#   filter(year(CONTACT_DATE) == "2026") %>%
+#   group_by(CONTACT_DATE) %>%
+#   summarise(total = n()) %>%
+#   collect()
+
 finclass_tbl <- tbl(conn2, "V_PB_EPP_CUSTOM_PRD_TYPE")
 
 anthem_plans <- read_excel("Anthem Visit Plans.xlsx")
@@ -2380,4 +2387,34 @@ reactable(
 <!--   collect()  -->
 
 <!-- ``` -->
+
+## Note
+### Count of Weekdays for 2025 vs. 2026 Volume Comparison
+```{r Notes}
+
+    
+reactable(
+  appt_day_comparison,
+  style = list(fontFamily = 'Calibri',
+                 fontSize = '14px'),
+    defaultColDef = colDef(align = "left",
+                           headerStyle = list(fontWeight = "Bold", fontSize = "14px"),
+                           headerClass = "bar-sort-header"),
+  # RowStyle = function(index) {
+  #           if (index %in% c(nrow(referral_vol_site_data_mshs))) {
+  #             list(`border-top` = "2px solid rgb(184,184,184)",
+  #                  fontWeight = "Bold")
+  #           }
+  #         },
+    highlight = TRUE,
+    # filterable = TRUE,
+    pagination = FALSE,
+    # height = 800,
+    wrap = TRUE,
+  searchable = TRUE
+
+  ) # Close Reactable
+
+
+```
 
