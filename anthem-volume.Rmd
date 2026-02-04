@@ -1988,14 +1988,15 @@ merged <- merged %>%
 
 
 ## No Show and Fill Rates
-```{r No Show and Fill Rate by Site, echo = FALSE, warning = FALSE, message = FALSE}
+### By Week
+```{r No Show and Fill Rate by Week, echo = FALSE, warning = FALSE, message = FALSE}
 
 
 htmltools::browsable(
   tagList(
     tags$button(
       tagList(fontawesome::fa("download"), "Download Table"),
-      onclick = "Reactable.downloadDataCSV('no-show-template-util', 'No Show and Fill Rates')"
+      onclick = "Reactable.downloadDataCSV('no-show-template-util-week', 'No Show and Fill Rates')"
     ),
 
 # htmltools::browsable(
@@ -2016,7 +2017,7 @@ reactable(
     mutate(appt_week = as.character(format(appt_week, "%m-%d-%Y"))) %>%
     filter(SITE %in% c("MSBI", "MSDMG", "MSH- AMBULATORY CARE", "MSH-MSDFP", "MSM", "MSQ",               
                        "MSSN",  "MSUS", "MSW", "NETWORK", "NYEE", "MSB")),
-  elementId = "no-show-template-util",
+  elementId = "no-show-template-util-week",
   # elementId = "referral-vol-download-table",
   style = list(fontFamily = 'Calibri',
                  fontSize = '14px'),
@@ -2256,7 +2257,7 @@ reactable(
         return (totalMSS_Attributed_NS_SDC) / (totalMSS_Attributed_NS_SDC + totalMSS_Attributed_Arrived) || '-'
       }"),
       style = JS("function(rowInfo) {
-        var value = rowInfo.row['MSS_Attributed_NS_SDC_Rat']
+        var value = rowInfo.row['MSS_Attributed_NS_SDC_Rate']
         if (value > 0) {
           var color = '#e00000'
         } else {
@@ -2350,6 +2351,368 @@ reactable(
 ```
 
 
+
+### By Site
+```{r No Show and Fill Rate by Site, echo = FALSE, warning = FALSE, message = FALSE}
+
+
+htmltools::browsable(
+  tagList(
+    tags$button(
+      tagList(fontawesome::fa("download"), "Download Table"),
+      onclick = "Reactable.downloadDataCSV('no-show-template-util-site', 'No Show and Fill Rates')"
+    ),
+
+# htmltools::browsable(
+#   tagList(
+#     div(tags$label("Summary by", `for` = "access-roi")),
+#     tags$select(
+#       id = "access-roi",
+#       onchange = "Reactable.setGroupBy('access-metrics', this.value ? [this.value] : [])",
+#       tags$option("None", value = ""),
+#       lapply(c("Year", "Month"), tags$option)
+#     ),
+# 
+#     tags$hr("aria-hidden" = "true"),
+    
+reactable(
+  merged %>%
+    arrange(as.Date(appt_week)) %>%
+    mutate(appt_week = as.character(format(appt_week, "%m-%d-%Y"))) %>%
+    filter(SITE %in% c("MSBI", "MSDMG", "MSH- AMBULATORY CARE", "MSH-MSDFP", "MSM", "MSQ",               
+                       "MSSN",  "MSUS", "MSW", "NETWORK", "NYEE", "MSB")),
+  elementId = "no-show-template-util-site",
+  # elementId = "referral-vol-download-table",
+  style = list(fontFamily = 'Calibri',
+                 fontSize = '14px'),
+    defaultColDef = colDef(align = "left",
+                           headerStyle = list(fontWeight = "Bold", fontSize = "14px"),
+                           headerClass = "bar-sort-header"),
+  # RowStyle = function(index) {
+  #           if (index %in% c(nrow(referral_vol_site_data_mshs))) {
+  #             list(`border-top` = "2px solid rgb(184,184,184)",
+  #                  fontWeight = "Bold")
+  #           }
+  #         },
+    highlight = TRUE,
+    # filterable = TRUE,
+    pagination = FALSE,
+    # height = 800,
+    wrap = TRUE,
+  searchable = TRUE,
+
+  groupBy = c("MSHS", "SITE", "appt_week", "DEPT_SPECIALTY_NAME", "DEPARTMENT_NAME", "PROV_TYPE"),
+
+  columnGroups = list(
+    colGroup(name = "", columns = c("MSHS", "SITE", "appt_week", "DEPT_SPECIALTY_NAME", "DEPARTMENT_NAME", "DEPARTMENT_ID",
+                                    "PROV_TYPE", "PROV_NAME_WID"),
+             headerStyle = list(color = "black", fontSize = "15px"),
+             sticky = "left"),
+    colGroup(name = paste0("2026 Completed Visits (", format(as.Date("2026-01-01"), "%m/%d"),"-",format(as.Date(slot_date_start), "%m/%d"),")"),
+             columns = c("Total_Arrived", "CoC_Arrived", "Non_CoC_Arrived", "MSS_Attributed_Arrived", "Other_Payor_Arrived"),
+             headerStyle = list(background = "#7f7f7f", color = "white", fontSize = "15px")),
+    colGroup(name = paste0("2026 No Show and Same Day Cancellations (", format(as.Date("2026-01-01"), "%m/%d"),"-",format(as.Date(slot_date_start), "%m/%d"),")"),
+             columns = c("Total_NS_SDC", "CoC_NS_SDC", "Non_CoC_NS_SDC", "MSS_Attributed_NS_SDC", "Other_Payor_NS_SDC"),
+             headerStyle = list(background = "#212070", color = "white", fontSize = "15px")),
+    colGroup(name = paste0("No Show/Same Day Cancellation (", format(as.Date("2026-01-01"), "%m/%d"),"-",format(as.Date(slot_date_start), "%m/%d"),")"),
+             columns = c("Total_NS_SDC_Rate", "CoC_NS_SDC_Rate", "Non_CoC_NS_SDC_Rate", "MSS_Attributed_NS_SDC_Rate", "Other_Payor_NS_SDC_Rate"),
+             headerStyle = list(background = "#d80b8c", color = "white", fontSize = "15px")),
+    colGroup(name = paste0("Template Fill Rate (", format(as.Date("01-01-2026"), "%m/%d"),"-",format(as.Date(slot_date_start), "%m/%d"),")"),
+             columns = c("avail_hour", "arrived_hour", "prov_util", "unused_hour"),
+             headerStyle = list(background = "#00aeef", color = "white", fontSize = "15px"))
+    # colGroup(name = paste0("New Patient Capture*"),
+    #          columns = c("NEW_LOS", "NEW_LOS_baseline", "new_pt_var_baseline",
+    #                      "perc_new_los", "perc_new_los_baseline", "perc_new_los_var_baseline",
+    #                      "perc_new_pt_target", "perc_new_los_var_target"),
+    #          headerStyle = list(background = "#a5a7a5", color = "white", fontSize = "15px"))
+    ),
+
+  columns = list(
+
+     MSHS = colDef(
+      name = "MSHS",
+      maxWidth = 100),
+     
+     # appt_month = colDef(
+     #  name = "Month",
+     #  maxWidth = 100),
+     
+     appt_week = colDef(
+      name = "Week",
+      minWidth = 150),
+     
+     SITE = colDef(
+      name = "Site",
+      minWidth = 200),
+     
+     DEPT_SPECIALTY_NAME = colDef(
+      name = "Specialty",
+      minWidth = 200),
+     
+     DEPARTMENT_NAME = colDef(
+      name = "Department",
+      minWidth = 200),
+     # 
+     # DEPARTMENT_ID = colDef(
+     #  name = "Department ID",
+     #  minWidth = 120),
+     
+     PROV_TYPE = colDef(
+      name = "Type",
+      minWidth = 120),
+     
+     PROV_NAME_WID = colDef(
+      name = "Name",
+      minWidth = 200),
+     
+     Total_Arrived = colDef(
+      name = "Total",
+      maxWidth = 80,
+      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     CoC_Arrived = colDef(
+      name = "CoC",
+      maxWidth = 80,
+      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     Non_CoC_Arrived = colDef(
+      name = "Non-CoC",
+      maxWidth = 80,
+      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     MSS_Attributed_Arrived = colDef(
+      name = "MSS Attributed",
+      maxWidth = 80,
+      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+
+     Other_Payor_Arrived = colDef(
+      name = "Other Payor",
+      maxWidth = 80,
+      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     Total_NS_SDC = colDef(
+      name = "Total",
+      maxWidth = 80,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     CoC_NS_SDC = colDef(
+      name = "CoC",
+      maxWidth = 80,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     Non_CoC_NS_SDC = colDef(
+      name = "Non-CoC",
+      maxWidth = 80,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     MSS_Attributed_NS_SDC = colDef(
+      name = "MSS Attributed",
+      maxWidth = 80,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+
+     Other_Payor_NS_SDC = colDef(
+      name = "Other Payor",
+      maxWidth = 80,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     Total_NS_SDC_Rate = colDef(
+      name = "Total",
+      maxWidth = 80,
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalTotal_Arrived = 0
+        let totalTotal_NS_SDC = 0
+        rows.forEach(function(row) {
+          totalTotal_Arrived += row['Total_Arrived']
+          totalTotal_NS_SDC += row['Total_NS_SDC']
+        })
+        return (totalTotal_NS_SDC) / (totalTotal_NS_SDC + totalTotal_Arrived) || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['Total_NS_SDC_Rate']
+        if (value > 0) {
+          var color = '#e00000'
+        } else {
+          var color = '#008000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)),
+     
+     CoC_NS_SDC_Rate = colDef(
+      name = "CoC",
+      maxWidth = 80,
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalCoC_Arrived = 0
+        let totalCoC_NS_SDC = 0
+        rows.forEach(function(row) {
+          totalCoC_Arrived += row['CoC_Arrived']
+          totalCoC_NS_SDC += row['CoC_NS_SDC']
+        })
+        return (totalCoC_NS_SDC) / (totalCoC_NS_SDC + totalCoC_Arrived) || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['CoC_NS_SDC_Rate']
+        if (value > 0) {
+          var color = '#e00000'
+        } else {
+          var color = '#008000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)),
+     
+     Non_CoC_NS_SDC_Rate = colDef(
+      name = "Non-CoC",
+      maxWidth = 80,
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalNon_CoC_Arrived = 0
+        let totalNon_CoC_NS_SDC = 0
+        rows.forEach(function(row) {
+          totalNon_CoC_Arrived += row['Non_CoC_Arrived']
+          totalNon_CoC_NS_SDC += row['Non_CoC_NS_SDC']
+        })
+        return (totalNon_CoC_NS_SDC) / (totalNon_CoC_NS_SDC + totalNon_CoC_Arrived) || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['Non_CoC_NS_SDC_Rate']
+        if (value > 0) {
+          var color = '#e00000'
+        } else {
+          var color = '#008000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)),
+     
+     MSS_Attributed_NS_SDC_Rate = colDef(
+      name = "MSS Attributed",
+      maxWidth = 80,
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalMSS_Attributed_Arrived = 0
+        let totalMSS_Attributed_NS_SDC = 0
+        rows.forEach(function(row) {
+          totalMSS_Attributed_Arrived += row['MSS_Attributed_Arrived']
+          totalMSS_Attributed_NS_SDC += row['MSS_Attributed_NS_SDC']
+        })
+        return (totalMSS_Attributed_NS_SDC) / (totalMSS_Attributed_NS_SDC + totalMSS_Attributed_Arrived) || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['MSS_Attributed_NS_SDC_Rate']
+        if (value > 0) {
+          var color = '#e00000'
+        } else {
+          var color = '#008000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)),
+     
+     Other_Payor_NS_SDC_Rate = colDef(
+      name = "Other Payor",
+      maxWidth = 80,
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalOther_Payor_Arrived = 0
+        let totalOther_Payor_NS_SDC = 0
+        rows.forEach(function(row) {
+          totalOther_Payor_Arrived += row['Other_Payor_Arrived']
+          totalOther_Payor_NS_SDC += row['Other_Payor_NS_SDC']
+        })
+        return (totalOther_Payor_NS_SDC) / (totalOther_Payor_NS_SDC + totalOther_Payor_Arrived) || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['Other_Payor_NS_SDC_Rate']
+        if (value > 0) {
+          var color = '#e00000'
+        } else {
+          var color = '#008000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)),
+     
+     avail_hour = colDef(
+      name = "Available Hour",
+      maxWidth = 80,
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     arrived_hour = colDef(
+      name = "Arrived Hour",
+      maxWidth = 80,
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     prov_util = colDef(
+      name = "Fill Rate",
+      maxWidth = 80,
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalavail_hour = 0
+        let totalarrived_hour = 0
+        rows.forEach(function(row) {
+          totalavail_hour += row['avail_hour']
+          totalarrived_hour += row['arrived_hour']
+        })
+        return (totalarrived_hour) / totalavail_hour || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['prov_util']
+        if (value > 0.85) {
+          var color = '#008000'
+        } else {
+          var color = ' #e00000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)),
+     
+     unused_hour = colDef(
+      name = "Unused Hour",
+      maxWidth = 80,
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      style = list(color = "red", fontWeight = "Bold"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     appt_year = colDef(show =F),
+     appt_month = colDef(show =F),
+     DEPARTMENT_ID = colDef(show =F),
+     PROV_ID = colDef(show =F)
+     
+  ) # Close Columns
+
+  ) # Close Reactable
+) # Close Taglist
+) # Close htmltools
+
+```
 
 <!-- ```{r} -->
 
