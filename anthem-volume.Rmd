@@ -400,7 +400,7 @@ visitFact_conn <- tbl(conn5, dbplyr::ident_q('"Caboodle"."VisitFact"'))
 
 report_run_date <- Sys.Date()
 date_start <- format(Sys.Date(), "%Y-%m-%d")
-date_next_14days <- format(Sys.Date() +12, "%Y-%m-%d")
+date_next_14days <- format(Sys.Date() +13, "%Y-%m-%d")
 slot_date_start <- format(Sys.Date() -1, "%Y-%m-%d")
 # date_start <- paste0(format(Sys.Date(), "%Y-%m"),"-01")
 
@@ -454,14 +454,76 @@ coc_flag <- tbl(conn2, "PATIENT_FYI_FLAGS") %>%
 ```
 
 
+```{r Audit}
+
+# audit <- access_raw_tbl %>%
+#   left_join(finclass_tbl %>% 
+#               filter(PRD_TYPE == "EXCHANGE") %>%
+#               dplyr::select(PLAN_NAME, PRD_TYPE) %>%
+#               distinct(), 
+#             by = c("VISITPLAN" = "PLAN_NAME")) %>%
+#   left_join(tbl(conn2, "PATIENT_FYI_FLAGS") %>%
+#               filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)) %>%
+#               group_by(PATIENT_ID) %>%
+#               filter(LAST_UPDATE_INST == max(LAST_UPDATE_INST, na.rm = TRUE)) %>%
+#               dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C),
+#             by = c("PAT_ID" = "PATIENT_ID")) %>%
+#   mutate(FINCLASS = case_when(PRD_TYPE == "EXCHANGE" ~ "EXCHANGE", TRUE ~ FINCLASS)) %>%
+#   mutate(MSS_GROUP = case_when(GROUP_NUM %in% mss_exclusion_list ~ "MSS", TRUE ~ "")) %>%
+#   mutate(ANTHEM = case_when(VISITPLAN %in% anthem_plan_list ~ "Anthem", TRUE ~ "")) %>%
+#   mutate(ANTHEM = case_when(VISITPLAN %in% anthem_mcr_adv_list ~ "MCR Advantage", TRUE ~ ANTHEM)) %>%
+#   filter(year(CONTACT_DATE)==2026) %>%
+#    filter(month(CONTACT_DATE)==2) %>%
+#   # filter(DERIVED_STATUS_DESC == "Scheduled") %>%
+#   # filter((CONTACT_DATE >= TO_DATE(date_start_2025, "YYYY-MM-DD HH24:MI:SS") & CONTACT_DATE < TO_DATE(date_end_2025, "YYYY-MM-DD HH24:MI:SS")) |
+#   #          (CONTACT_DATE >= TO_DATE(date_start_2026, "YYYY-MM-DD HH24:MI:SS") & CONTACT_DATE < TO_DATE(date_end_2026, "YYYY-MM-DD HH24:MI:SS"))) %>%
+#   mutate(appt_year = year(CONTACT_DATE),
+#          appt_month = month(CONTACT_DATE)) %>%
+#   filter(SITE == "MSUS") %>%
+#   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, DERIVED_STATUS_DESC,
+#            PAT_ENC_CSN_ID, PAT_NAME, MRN, APPT_DTTM, PROV_NAME_WID, VISITPLAN,
+#            CONTACT_DATE, appt_year, appt_month, PAT_FLAG_TYPE_C, MSS_GROUP, ANTHEM) %>%
+#   summarise(total = n()) %>%
+#   collect()
+# 
+# 
+# audit2 <- audit %>%
+#   mutate(appt_day = wday(CONTACT_DATE, label = TRUE)) %>%
+#   mutate(
+#     pat_group = case_when(
+#       ANTHEM == "Anthem" &
+#         is.na(MSS_GROUP) ~ "Anthem",
+#       
+#       ANTHEM == "MCR Advantage" &
+#         is.na(MSS_GROUP) ~ "Medicare_Advantage",
+# 
+#       !is.na(ANTHEM) &
+#         !is.na(MSS_GROUP) ~ "MSS_Attributed",
+# 
+#       TRUE ~ "Other_Payor"
+#     )
+#   )
+
+
+# access <- access_raw_tbl %>%
+#   filter(DERIVED_STATUS_DESC == "Arrived") %>%
+#   filter(year(CONTACT_DATE) == 2026) %>%
+#   filter(month(CONTACT_DATE) == 2) %>%
+#   group_by(CONTACT_DATE) %>%
+#   summarise(total = n()) %>%
+#   collect()
+
+```
+
+
 ```{r Anthem Visit Volume 2025 vs. 2026}
 
 
 date_start_2025 <- format(as.Date("2025-01-06"), "%Y-%m-%d")
-date_end_2025 <- format(as.Date(paste0("2025-",format(Sys.Date()-1, "%m-%d"))), "%Y-%m-%d")
+date_end_2025 <- format(as.Date(paste0("2025-",format(Sys.Date(), "%m-%d"))), "%Y-%m-%d")
 
 date_start_2026 <- format(as.Date("2026-01-05"), "%Y-%m-%d")
-date_end_2026 <- format(Sys.Date()-2, "%Y-%m-%d")
+date_end_2026 <- format(Sys.Date()-1, "%Y-%m-%d")
 
 
 # jan_vol_plans <- jan_vol %>%
@@ -488,11 +550,13 @@ volume_comparison_check <- access_raw_tbl %>%
   mutate(ANTHEM = case_when(VISITPLAN %in% anthem_mcr_adv_list ~ "MCR Advantage", TRUE ~ ANTHEM)) %>%
   filter(year(CONTACT_DATE)>=2024) %>%
   filter(DERIVED_STATUS_DESC == "Arrived") %>%
-  filter((CONTACT_DATE >= TO_DATE(date_start_2025, "YYYY-MM-DD HH24:MI:SS") & CONTACT_DATE < TO_DATE(date_end_2025, "YYYY-MM-DD HH24:MI:SS")) |
-           (CONTACT_DATE >= TO_DATE(date_start_2026, "YYYY-MM-DD HH24:MI:SS") & CONTACT_DATE < TO_DATE(date_end_2026, "YYYY-MM-DD HH24:MI:SS"))) %>%
+  filter((CONTACT_DATE >= TO_DATE(date_start_2025, "YYYY-MM-DD HH24:MI:SS") & CONTACT_DATE <= TO_DATE(date_end_2025, "YYYY-MM-DD HH24:MI:SS")) |
+           (CONTACT_DATE >= TO_DATE(date_start_2026, "YYYY-MM-DD HH24:MI:SS") & CONTACT_DATE <= TO_DATE(date_end_2026, "YYYY-MM-DD HH24:MI:SS"))) %>%
   mutate(appt_year = year(CONTACT_DATE),
          appt_month = month(CONTACT_DATE)) %>%
+  # filter(SITE == "MSUS") %>%
   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, DERIVED_STATUS_DESC,
+           # PAT_ENC_CSN_ID, PAT_NAME, MRN, APPT_DTTM, PROV_NAME_WID, VISITPLAN,
            CONTACT_DATE, appt_year, appt_month, PAT_FLAG_TYPE_C, MSS_GROUP, ANTHEM) %>%
   summarise(total = n()) %>%
   collect()
@@ -562,28 +626,6 @@ appt_day_comparison <- volume_comparison2_group %>%
 
 ```{r Current and Next 14 Days Volume}
 
-# flag2 <- tbl(conn2, "PATIENT_FYI_FLAGS") %>%
-#   group_by(PATIENT_ID) %>%
-#   filter(LAST_UPDATE_INST == max(LAST_UPDATE_INST, na.rm = TRUE)) %>%
-#   collect()
-
-
-# flag <- tbl(conn2, "PATIENT_FYI_FLAGS") %>%
-#   filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)) %>%
-#   group_by(PATIENT_ID) %>%
-#   filter(LAST_UPDATE_INST == max(LAST_UPDATE_INST, na.rm = TRUE)) %>%
-#   dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C) %>%
-#   collect()
-#               
-#   
-# 
-# check <- access_raw_tbl %>%
-#   filter(MRN == "4187152") %>%
-#   group_by(PAT_ID, MRN) %>%
-#   summarise(total = n()) %>%
-#   collect()
-  
-  
 volume_comparison <- access_raw_tbl %>%
   left_join(finclass_tbl %>% 
               filter(PRD_TYPE == "EXCHANGE") %>%
@@ -1850,7 +1892,7 @@ no_show <- access_raw_tbl %>%
   mutate(MSS_GROUP = case_when(GROUP_NUM %in% mss_exclusion_list ~ "MSS", TRUE ~ "")) %>%
   mutate(ANTHEM = case_when(VISITPLAN %in% anthem_plan_list ~ "Anthem", TRUE ~ "")) %>%
   filter(year(CONTACT_DATE)>=2026) %>%
-  filter(CONTACT_DATE < TO_DATE(slot_date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
+  filter(CONTACT_DATE <= TO_DATE(slot_date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
   mutate(cancel_lead_days = APPT_DTTM - APPT_CANC_DTTM) %>%
    filter(DERIVED_STATUS_DESC == "Arrived" | 
@@ -1864,7 +1906,9 @@ no_show <- access_raw_tbl %>%
          appt_made_month = month(APPT_MADE_DATE)) %>%
   mutate(visit_type = ifelse(is.na(VISIT_GROUP_NUM), "ESTABLISHED", "NEW")) %>%
   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
+  # filter(SITE == "MSDMG") %>%
   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, PROV_TYPE, PROV_ID, PROV_NAME_WID, DERIVED_STATUS_DESC,
+           # PAT_ENC_CSN_ID, PAT_NAME, MRN, APPT_DTTM, VISITPLAN,
            CONTACT_DATE, appt_year, appt_month, appt_week, PAT_FLAG_TYPE_C, MSS_GROUP, ANTHEM) %>%
   summarise(total = n()) %>%
   collect() 
@@ -1942,7 +1986,7 @@ grp_mapping <- data.frame("SITE" = c("NETWORK", "OTHER", "MSH-MSDFP", "MSUS",
 
 
 
-slot_merged <- slot_data_prc_tbl %>%
+slot_merged <- slot_data_tbl %>%
   left_join(clarity_ser_tbl_loc %>% select(PROV_ID, PROV_TYPE)) %>%
   # filter(PROV_TYPE == "Physician") %>%
   left_join(clarity_ser_2_tbl_loc %>% 
@@ -1968,6 +2012,12 @@ slot_merged <- slot_data_prc_tbl %>%
               rename("DEPT_SPECIALTY_NAME" = SPECIALTY)) 
 
 
+check <- slot_merged %>%
+  mutate(slot_date = sql("TRUNC(SLOT_BEGIN_TIME)")) %>% 
+  filter(year(slot_date) >= 2026) %>%
+  group_by(slot_date) %>%
+  summarise(arrived = sum(ARRIVED_MIN, na.rm = T)) %>%
+  collect()
 
 slot_util_prov <- slot_merged %>%
   mutate(slot_date = sql("TRUNC(SLOT_BEGIN_TIME)")) %>%
@@ -1975,7 +2025,7 @@ slot_util_prov <- slot_merged %>%
          slot_month = month(SLOT_BEGIN_TIME),
          slot_week = trunc(SLOT_BEGIN_TIME, "IW")) %>%
   filter(year(slot_date) >= 2026) %>%
-  filter(SLOT_BEGIN_TIME < TO_DATE(slot_date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
+  filter(SLOT_BEGIN_TIME <= TO_DATE(slot_date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
   group_by(DEPT_SPECIALTY_NAME, DEPARTMENT_ID, DEPARTMENT_NAME, PROV_ID, NPI, PROV_NM_WID, PROV_TYPE, slot_year, slot_month) %>%
   mutate(avail_hour = sum(REG_AVAIL_MIN, na.rm = T)/60,
             sched_hour = sum(SCHED_MIN, na.rm = T)/60,
@@ -2018,8 +2068,7 @@ merged <- merged %>%
 ```
 
 
-## No Show and Fill Rates
-### By Week
+## No Show by Week
 ```{r No Show and Fill Rate by Week, echo = FALSE, warning = FALSE, message = FALSE}
 
 
@@ -2381,9 +2430,7 @@ reactable(
 
 ```
 
-
-
-### By Site
+## No Show by Site
 ```{r No Show and Fill Rate by Site, echo = FALSE, warning = FALSE, message = FALSE}
 
 
