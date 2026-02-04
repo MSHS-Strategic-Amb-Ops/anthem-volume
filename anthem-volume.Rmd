@@ -1938,10 +1938,6 @@ slot_merged <- slot_data_prc_tbl %>%
               rename("DEPT_SPECIALTY_NAME" = SPECIALTY)) 
 
 
-check <- slot_merged %>% 
-  mutate(slot_date = sql("TRUNC(SLOT_BEGIN_TIME)")) %>%
-  group_by(slot_date) %>%
-  summarise(total = sum(ARRIVED_MIN, na.rm = T)) %>%
 
 slot_util_prov <- slot_merged %>%
   mutate(slot_date = sql("TRUNC(SLOT_BEGIN_TIME)")) %>%
