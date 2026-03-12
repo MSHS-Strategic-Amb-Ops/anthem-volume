@@ -516,9 +516,21 @@ coc_flag <- tbl(conn2, "PATIENT_FYI_FLAGS") %>%
 ```
 
 
-```{r Anthem Visit Volume 2025 vs. 2026}
+```{r Anthem Volume Summary for Vinny}
 
-
+# 
+# finclass_mapping <- mutate(FINCLASS = case_when(FINCLASS %in% c("EXCHANGE") ~ "EXCHANGE",
+#                               FINCLASS %in% c("Commercial/Managed Care") ~ "COMMERCIAL_MANAGED_CARE",
+#                               FINCLASS %in% c("Medicaid Managed Care") ~ "MCD_HMO",
+#                               FINCLASS %in% c("Medicare Managed Care") ~ "MCR_HMO",
+#                               FINCLASS %in% c("Medicaid MS") ~ "MCD",
+#                               FINCLASS %in% c("Medicare MS") ~ "MCR",
+#                               FINCLASS %in% c("Self-pay", "Self Pay MS") ~ "SELF_PAY",
+#                               TRUE ~ "OTHER"
+#                               ))
+#   
+  
+  
 date_start_2025 <- format(as.Date("2025-01-06"), "%Y-%m-%d")
 date_end_2025 <- format(as.Date(paste0("2025-",format(Sys.Date(), "%m-%d"))), "%Y-%m-%d")
 
@@ -530,9 +542,14 @@ date_end_2026 <- format(Sys.Date()-1, "%Y-%m-%d")
 #   left_join(anthem_plans2,
 #             by = c("VISITPLAN" = "BENEFIT_PLAN_NAME"))
 
+finclass <- access_raw_tbl %>% 
+  filter(year(CONTACT_DATE) == 2026) %>%
+  group_by(FINCLASS) %>%
+  summarise(total = n()) %>%
+  collect()
 
 
-volume_comparison_check <- access_raw_tbl %>%
+volume_by_payor <- access_raw_tbl %>%
   left_join(finclass_tbl %>% 
               filter(PRD_TYPE == "EXCHANGE") %>%
               dplyr::select(PLAN_NAME, PRD_TYPE) %>%
@@ -542,6 +559,87 @@ volume_comparison_check <- access_raw_tbl %>%
               filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)) %>%
               group_by(PATIENT_ID) %>%
               filter(LAST_UPDATE_INST == max(LAST_UPDATE_INST, na.rm = TRUE)) %>%
+              filter(ACCT_NOTE_INSTANT == max(ACCT_NOTE_INSTANT)) %>%
+              dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C),
+            by = c("PAT_ID" = "PATIENT_ID")) %>%
+  mutate(FINCLASS = case_when(PRD_TYPE == "EXCHANGE" ~ "EXCHANGE", TRUE ~ FINCLASS)) %>%
+  mutate(FINCLASS = case_when(FINCLASS %in% c("EXCHANGE") ~ "EXCHANGE",
+                              FINCLASS %in% c("Commercial/Managed Care") ~ "COMMERCIAL_MANAGED_CARE",
+                              FINCLASS %in% c("Medicaid Managed Care") ~ "MCD_HMO",
+                              FINCLASS %in% c("Medicare Managed Care") ~ "MCR_HMO",
+                              FINCLASS %in% c("Medicaid MS") ~ "MCD",
+                              FINCLASS %in% c("Medicare MS") ~ "MCR",
+                              FINCLASS %in% c("Self-pay", "Self Pay MS") ~ "SELF_PAY",
+                              TRUE ~ "OTHER"
+                              )) %>%
+  mutate(MSS_GROUP = case_when(GROUP_NUM %in% mss_exclusion_list ~ "MSS", TRUE ~ "")) %>%
+  mutate(ANTHEM = case_when(VISITPLAN %in% anthem_plan_list ~ "Anthem", TRUE ~ "")) %>%
+  # mutate(ANTHEM = case_when(VISITPLAN %in% anthem_mcr_adv_list ~ "MCR Advantage", TRUE ~ ANTHEM)) %>%
+  filter(year(CONTACT_DATE)>=2024) %>%
+  filter(DERIVED_STATUS_DESC == "Arrived") %>%
+  filter((CONTACT_DATE >= TO_DATE(date_start_2025, "YYYY-MM-DD HH24:MI:SS") & CONTACT_DATE <= TO_DATE(date_end_2025, "YYYY-MM-DD HH24:MI:SS")) |
+           (CONTACT_DATE >= TO_DATE(date_start_2026, "YYYY-MM-DD HH24:MI:SS") & CONTACT_DATE <= TO_DATE(date_end_2026, "YYYY-MM-DD HH24:MI:SS"))) %>%
+  mutate(appt_year = year(CONTACT_DATE),
+         appt_month = month(CONTACT_DATE)) %>%
+  # filter(SITE == "MSUS") %>%
+  group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, DERIVED_STATUS_DESC,
+           # PAT_ENC_CSN_ID, PAT_NAME, MRN, APPT_DTTM, PROV_NAME_WID, VISITPLAN,
+           CONTACT_DATE, appt_year, appt_month, FINCLASS, ANTHEM) %>%
+  summarise(total = n()) %>%
+  collect()
+  
+
+volume_by_payor_summary <- volume_by_payor %>%
+  group_by(SITE, appt_year, FINCLASS, ANTHEM) %>%
+  summarise(total = sum(total, na.rm = T))
+
+# require(openxlsx)
+# write.xlsx(volume_by_payor_summary, "Anthem vs NonAnthem_022726.xlsx")
+
+  
+```
+
+
+```{r Anthem Visit Volume 2025 vs. 2026}
+
+
+# date_start_2025 <- format(as.Date("2025-01-06"), "%Y-%m-%d")
+# date_end_2025 <- format(as.Date(paste0("2025-",format(Sys.Date(), "%m-%d"))), "%Y-%m-%d")
+# 
+# date_start_2026 <- format(as.Date("2026-01-05"), "%Y-%m-%d")
+# date_end_2026 <- format(Sys.Date()-1, "%Y-%m-%d")
+
+
+# jan_vol_plans <- jan_vol %>%
+#   left_join(anthem_plans2,
+#             by = c("VISITPLAN" = "BENEFIT_PLAN_NAME"))
+
+# flag <- tbl(conn2, "PATIENT_FYI_FLAGS") %>%
+#               filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)) %>%
+#               group_by(PATIENT_ID) %>%
+#               filter(LAST_UPDATE_INST == max(LAST_UPDATE_INST)) %>%
+#               filter(ACCT_NOTE_INSTANT == max(ACCT_NOTE_INSTANT)) %>%
+#               dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C) %>%
+#   collect()
+# 
+# 
+# pt_flag <- tbl(conn2, "PATIENT_FYI_FLAGS") %>%
+#   filter(PATIENT_ID == "Z10075049") %>%
+#   collect()
+
+
+volume_comparison_check <- access_raw_tbl %>%
+  # filter(SITE == "MSDMG") %>%
+  left_join(finclass_tbl %>%
+              filter(PRD_TYPE == "EXCHANGE") %>%
+              dplyr::select(PLAN_NAME, PRD_TYPE) %>%
+              distinct(),
+            by = c("VISITPLAN" = "PLAN_NAME")) %>%
+  left_join(tbl(conn2, "PATIENT_FYI_FLAGS") %>%
+              filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)) %>%
+              group_by(PATIENT_ID) %>%
+              filter(LAST_UPDATE_INST == max(LAST_UPDATE_INST, na.rm = TRUE)) %>%
+              filter(ACCT_NOTE_INSTANT == max(ACCT_NOTE_INSTANT)) %>%
               dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C),
             by = c("PAT_ID" = "PATIENT_ID")) %>%
   mutate(FINCLASS = case_when(PRD_TYPE == "EXCHANGE" ~ "EXCHANGE", TRUE ~ FINCLASS)) %>%
@@ -554,10 +652,10 @@ volume_comparison_check <- access_raw_tbl %>%
            (CONTACT_DATE >= TO_DATE(date_start_2026, "YYYY-MM-DD HH24:MI:SS") & CONTACT_DATE <= TO_DATE(date_end_2026, "YYYY-MM-DD HH24:MI:SS"))) %>%
   mutate(appt_year = year(CONTACT_DATE),
          appt_month = month(CONTACT_DATE)) %>%
-  # filter(SITE == "MSUS") %>%
   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, DERIVED_STATUS_DESC,
-           # PAT_ENC_CSN_ID, PAT_NAME, MRN, APPT_DTTM, PROV_NAME_WID, VISITPLAN,
+           # PAT_ENC_CSN_ID, PAT_NAME, MRN, APPT_DTTM, APPT_MADE_DTTM, PROV_NAME_WID, VISITPLAN,
            CONTACT_DATE, appt_year, appt_month, PAT_FLAG_TYPE_C, MSS_GROUP, ANTHEM) %>%
+  # group_by(SITE, appt_year) %>%
   summarise(total = n()) %>%
   collect()
   
@@ -636,6 +734,7 @@ volume_comparison <- access_raw_tbl %>%
               filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)) %>%
               group_by(PATIENT_ID) %>%
               filter(LAST_UPDATE_INST == max(LAST_UPDATE_INST, na.rm = TRUE)) %>%
+              filter(ACCT_NOTE_INSTANT == max(ACCT_NOTE_INSTANT)) %>%
               dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C),
             by = c("PAT_ID" = "PATIENT_ID")) %>%
   mutate(FINCLASS = case_when(PRD_TYPE == "EXCHANGE" ~ "EXCHANGE", TRUE ~ FINCLASS)) %>%
