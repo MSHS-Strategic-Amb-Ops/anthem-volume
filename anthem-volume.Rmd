@@ -400,7 +400,7 @@ visitFact_conn <- tbl(conn5, dbplyr::ident_q('"Caboodle"."VisitFact"'))
 
 report_run_date <- Sys.Date()
 date_start <- format(Sys.Date(), "%Y-%m-%d")
-date_next_14days <- format(Sys.Date() +13, "%Y-%m-%d")
+date_next_14days <- format(Sys.Date() +14, "%Y-%m-%d")
 slot_date_start <- format(Sys.Date() -1, "%Y-%m-%d")
 # date_start <- paste0(format(Sys.Date(), "%Y-%m"),"-01")
 
@@ -537,6 +537,12 @@ date_end_2025 <- format(as.Date(paste0("2025-",format(Sys.Date(), "%m-%d"))), "%
 date_start_2026 <- format(as.Date("2026-01-05"), "%Y-%m-%d")
 date_end_2026 <- format(Sys.Date()-1, "%Y-%m-%d")
 
+
+# date_start_2025 <- format(as.Date("2025-03-01"), "%Y-%m-%d")
+# date_end_2025 <- format(as.Date("2025-03-12"), "%Y-%m-%d")
+# 
+# date_start_2026 <- format(as.Date("2026-03-01"), "%Y-%m-%d")
+# date_end_2026 <- format(as.Date("2026-03-11"), "%Y-%m-%d")
 
 # jan_vol_plans <- jan_vol %>%
 #   left_join(anthem_plans2,
