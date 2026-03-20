@@ -660,10 +660,10 @@ volume_comparison_check <- access_raw_tbl %>%
          appt_month = month(CONTACT_DATE),
          week_start = sql("TRUNC(CONTACT_DATE, 'IW')")
          ) %>%
-  # group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, DERIVED_STATUS_DESC,
-  #          # PAT_ENC_CSN_ID, PAT_NAME, MRN, APPT_DTTM, APPT_MADE_DTTM, PROV_NAME_WID, VISITPLAN,
-  #          CONTACT_DATE, appt_year, appt_month, PAT_FLAG_TYPE_C, MSS_GROUP, ANTHEM) %>%
-  group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, week_start) %>%
+  group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, DERIVED_STATUS_DESC,
+           # PAT_ENC_CSN_ID, PAT_NAME, MRN, APPT_DTTM, APPT_MADE_DTTM, PROV_NAME_WID, VISITPLAN,
+           CONTACT_DATE, appt_year, appt_month, PAT_FLAG_TYPE_C, MSS_GROUP, ANTHEM) %>%
+  # group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, week_start) %>%
   summarise(total = n()) %>%
   collect()
   
