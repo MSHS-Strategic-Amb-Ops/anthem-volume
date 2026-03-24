@@ -3477,7 +3477,6 @@ reactable(
 ### Count of Weekdays for 2025 vs. 2026 Volume Comparison (MTD)
 ```{r Notes MTD}
 
-    
 reactable(
   mtd_appt_day_comparison,
   style = list(fontFamily = 'Calibri',
