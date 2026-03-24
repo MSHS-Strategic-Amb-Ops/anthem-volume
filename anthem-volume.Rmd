@@ -608,32 +608,6 @@ volume_by_payor_summary <- volume_by_payor %>%
 
 ```{r Anthem Visit Volume 2025 vs. 2026}
 
-
-# date_start_2025 <- format(as.Date("2025-01-06"), "%Y-%m-%d")
-# date_end_2025 <- format(as.Date(paste0("2025-",format(Sys.Date(), "%m-%d"))), "%Y-%m-%d")
-# 
-# date_start_2026 <- format(as.Date("2026-01-05"), "%Y-%m-%d")
-# date_end_2026 <- format(Sys.Date()-1, "%Y-%m-%d")
-
-
-# jan_vol_plans <- jan_vol %>%
-#   left_join(anthem_plans2,
-#             by = c("VISITPLAN" = "BENEFIT_PLAN_NAME"))
-
-# flag <- tbl(conn2, "PATIENT_FYI_FLAGS") %>%
-#               filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)) %>%
-#               group_by(PATIENT_ID) %>%
-#               filter(LAST_UPDATE_INST == max(LAST_UPDATE_INST)) %>%
-#               filter(ACCT_NOTE_INSTANT == max(ACCT_NOTE_INSTANT)) %>%
-#               dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C) %>%
-#   collect()
-# 
-# 
-# pt_flag <- tbl(conn2, "PATIENT_FYI_FLAGS") %>%
-#   filter(PATIENT_ID == "Z10075049") %>%
-#   collect()
-
-
 volume_comparison_check <- access_raw_tbl %>%
   # filter(SITE == "MSDMG") %>%
   left_join(finclass_tbl %>%
@@ -728,6 +702,125 @@ appt_day_comparison <- volume_comparison2_group %>%
               values_from = total)
 
 ```
+
+
+
+```{r Anthem Volume by Month 2025 vs. 2026}
+
+
+mtd_end_2026 <- Sys.Date() - 1
+mtd_start_2026 <- floor_date(march_end_2026, "month")
+
+num_days <- as.numeric(march_end_2026 - march_start_2026) + 1
+
+mtd_end_2025 <- as.Date(paste0("2025-", sprintf("%02d", month(march_end_2026 + 1)), "-",sprintf("%02d", day(march_end_2026 + 1))))
+mtd_start_2025 <- date_end_2025 - (num_days - 1)
+
+
+mtd_start_2026 <- format(as.Date(mtd_start_2026), "%Y-%m-%d")
+mtd_end_2026 <- format(as.Date(mtd_end_2026), "%Y-%m-%d")
+mtd_start_2025 <- format(as.Date(mtd_start_2025), "%Y-%m-%d")
+mtd_end_2025 <- format(as.Date(mtd_end_2025), "%Y-%m-%d")
+
+
+
+
+mtd_volume_comparison_check <- access_raw_tbl %>%
+  # filter(SITE == "MSDMG") %>%
+  left_join(finclass_tbl %>%
+              filter(PRD_TYPE == "EXCHANGE") %>%
+              dplyr::select(PLAN_NAME, PRD_TYPE) %>%
+              distinct(),
+            by = c("VISITPLAN" = "PLAN_NAME")) %>%
+  left_join(tbl(conn2, "PATIENT_FYI_FLAGS") %>%
+              filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)) %>%
+              group_by(PATIENT_ID) %>%
+              filter(LAST_UPDATE_INST == max(LAST_UPDATE_INST, na.rm = TRUE)) %>%
+              filter(ACCT_NOTE_INSTANT == max(ACCT_NOTE_INSTANT)) %>%
+              dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C),
+            by = c("PAT_ID" = "PATIENT_ID")) %>%
+  mutate(FINCLASS = case_when(PRD_TYPE == "EXCHANGE" ~ "EXCHANGE", TRUE ~ FINCLASS)) %>%
+  mutate(MSS_GROUP = case_when(GROUP_NUM %in% mss_exclusion_list ~ "MSS", TRUE ~ "")) %>%
+  mutate(ANTHEM = case_when(VISITPLAN %in% anthem_plan_list ~ "Anthem", TRUE ~ "")) %>%
+  mutate(ANTHEM = case_when(VISITPLAN %in% anthem_mcr_adv_list ~ "MCR Advantage", TRUE ~ ANTHEM)) %>%
+  filter(year(CONTACT_DATE)>=2025) %>%
+  filter(DERIVED_STATUS_DESC == "Arrived") %>%
+  filter((CONTACT_DATE >= TO_DATE(mtd_start_2025, "YYYY-MM-DD HH24:MI:SS") & CONTACT_DATE <= TO_DATE(mtd_end_2025, "YYYY-MM-DD HH24:MI:SS")) |
+           (CONTACT_DATE >= TO_DATE(mtd_start_2026, "YYYY-MM-DD HH24:MI:SS") & CONTACT_DATE <= TO_DATE(mtd_end_2026, "YYYY-MM-DD HH24:MI:SS"))) %>%
+  mutate(appt_year = year(CONTACT_DATE),
+         appt_month = month(CONTACT_DATE),
+         week_start = sql("TRUNC(CONTACT_DATE, 'IW')")
+         ) %>%
+  group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, DERIVED_STATUS_DESC,
+           # PAT_ENC_CSN_ID, PAT_NAME, MRN, APPT_DTTM, APPT_MADE_DTTM, PROV_NAME_WID, VISITPLAN,
+           CONTACT_DATE, appt_year, appt_month, PAT_FLAG_TYPE_C, MSS_GROUP, ANTHEM) %>%
+  # group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, week_start) %>%
+  summarise(total = n()) %>%
+  collect()
+  
+
+mtd_volume_comparison2_group <- mtd_volume_comparison_check %>%
+  mutate(appt_day = wday(CONTACT_DATE, label = TRUE)) %>%
+  mutate(
+    pat_group = case_when(
+      ANTHEM == "Anthem" &
+        is.na(MSS_GROUP) ~ "Anthem",
+      
+      ANTHEM == "MCR Advantage" &
+        is.na(MSS_GROUP) ~ "Medicare_Advantage",
+
+      !is.na(ANTHEM) &
+        !is.na(MSS_GROUP) ~ "MSS_Attributed",
+
+      TRUE ~ "Other_Payor"
+    )
+  )
+
+
+mtd_volume_comparison_group_summary <- mtd_volume_comparison2_group %>%
+  group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, 
+           appt_year, pat_group) %>%
+  summarise(total = sum(total, na.rm = T))
+
+
+mtd_volume_comparison_group_summary2 <- mtd_volume_comparison_group_summary %>%
+  pivot_wider(names_from = c("pat_group","appt_year"),
+              values_from = total) %>%
+  mutate(Total_2025 = rowSums(across(contains("2025")), na.rm = TRUE),
+         Total_2026 = rowSums(across(contains("2026")), na.rm = TRUE)) %>%
+  rowwise() %>%
+  mutate(Total_Var = Total_2026 - Total_2025,
+         Anthem_Var = Anthem_2026 - Anthem_2025,
+         Medicare_Advantage_Var = Medicare_Advantage_2026 - Medicare_Advantage_2025,
+         MSS_Attributed_Var = MSS_Attributed_2026 - MSS_Attributed_2025,
+         Other_Payor_Var = Other_Payor_2026 - Other_Payor_2025,
+         Total_Var_Perc = Total_Var / Total_2025,
+         Anthem_Var_Perc = Anthem_Var / Anthem_2025,
+         Medicare_Advantage_Var_Perc = Medicare_Advantage_Var / Medicare_Advantage_2025,
+         MSS_Attributed_Var_Perc = MSS_Attributed_Var / MSS_Attributed_2025,
+         Other_Payor_Var_Perc = Other_Payor_Var / Other_Payor_2025) %>%
+  mutate(MSHS = "MSHS")
+  
+
+col_order <- c("MSHS", "SITE", "DEPT_SPECIALTY_NAME", "DEPARTMENT_NAME", "DEPARTMENT_ID",
+               "Total_2025", "Anthem_2025", "Medicare_Advantage_2025", "MSS_Attributed_2025", "Other_Payor_2025",
+               "Total_2026", "Anthem_2026", "Medicare_Advantage_2026", "MSS_Attributed_2026", "Other_Payor_2026",
+               "Total_Var", "Anthem_Var", "Medicare_Advantage_Var", "MSS_Attributed_Var", "Other_Payor_Var",
+               "Total_Var_Perc", "Anthem_Var_Perc", "Medicare_Advantage_Var_Perc", "MSS_Attributed_Var_Perc", "Other_Payor_Var_Perc")
+
+mtd_volume_comparison_group_summary2 <- mtd_volume_comparison_group_summary2 %>%
+  dplyr::select(col_order)
+
+
+mtd_appt_day_comparison <- mtd_volume_comparison2_group %>%
+  group_by(appt_year, appt_day) %>%
+  summarise(total = n_distinct(CONTACT_DATE)) %>%
+  pivot_wider(names_from = appt_day,
+              values_from = total)
+
+
+```
+
 
 
 ```{r Current and Next 14 Days Volume}
@@ -1245,7 +1338,7 @@ ________________________________________________________________________________
 <!-- ``` -->
 
 
-## Anthem Volume Impact
+## Anthem Volume Impact (YoY)
 ```{r Volume Comparison by Group Sites Only, echo = FALSE, warning = FALSE, message = FALSE}
 
 
@@ -1302,6 +1395,419 @@ reactable(
              columns = c("Total_2025", "Anthem_2025", "Medicare_Advantage_2025", "MSS_Attributed_2025", "Other_Payor_2025"),
              headerStyle = list(background = "#7f7f7f", color = "white", fontSize = "15px")),
     colGroup(name = paste0("2026 Completed Visits (", format(as.Date(date_start_2026), "%m/%d"),"-",format(as.Date(date_end_2026), "%m/%d"),")"),
+             columns = c("Total_2026", "Anthem_2026", "Medicare_Advantage_2026", "MSS_Attributed_2026", "Other_Payor_2026"),
+             headerStyle = list(background = "#212070", color = "white", fontSize = "15px")),
+    colGroup(name = paste0("Volume Variance"),
+             columns = c("Total_Var", "Anthem_Var", "Medicare_Advantage_Var", "MSS_Attributed_Var", "Other_Payor_Var"),
+             headerStyle = list(background = "#d80b8c", color = "white", fontSize = "15px")),
+    colGroup(name = paste0("Volume Variance %"),
+             columns = c("Total_Var_Perc", "Anthem_Var_Perc", "Medicare_Advantage_Var_Perc", "MSS_Attributed_Var_Perc", "Other_Payor_Var_Perc"),
+             headerStyle = list(background = "#00aeef", color = "white", fontSize = "15px"))
+    # colGroup(name = paste0("New Patient Capture*"),
+    #          columns = c("NEW_LOS", "NEW_LOS_baseline", "new_pt_var_baseline",
+    #                      "perc_new_los", "perc_new_los_baseline", "perc_new_los_var_baseline",
+    #                      "perc_new_pt_target", "perc_new_los_var_target"),
+    #          headerStyle = list(background = "#a5a7a5", color = "white", fontSize = "15px"))
+    ),
+
+  columns = list(
+
+     MSHS = colDef(
+      name = "MSHS",
+      maxWidth = 100),
+     
+     SITE = colDef(
+      name = "Site",
+      minWidth = 200),
+     
+     DEPT_SPECIALTY_NAME = colDef(
+      name = "Specialty",
+      minWidth = 200),
+     
+     DEPARTMENT_NAME = colDef(
+      name = "Department",
+      minWidth = 200),
+     
+     DEPARTMENT_ID = colDef(
+      name = "Department ID",
+      minWidth = 120),
+     
+     Total_2025 = colDef(
+      name = "Total",
+      maxWidth = 80,
+      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     Anthem_2025 = colDef(
+      name = "Anthem",
+      maxWidth = 80,
+      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     Medicare_Advantage_2025 = colDef(
+      name = "Medicare Advantage",
+      maxWidth = 80,
+      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     MSS_Attributed_2025 = colDef(
+      name = "MSS Attributed",
+      maxWidth = 80,
+      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+
+     Other_Payor_2025 = colDef(
+      name = "Other Payor",
+      maxWidth = 80,
+      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     Total_2026 = colDef(
+      name = "Total",
+      maxWidth = 80,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     Anthem_2026 = colDef(
+      name = "Anthem",
+      maxWidth = 80,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     Medicare_Advantage_2026 = colDef(
+      name = "Medicare Advantage",
+      maxWidth = 80,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     MSS_Attributed_2026 = colDef(
+      name = "MSS Attributed",
+      maxWidth = 80,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+
+     Other_Payor_2026 = colDef(
+      name = "Other Payor",
+      maxWidth = 80,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = 'sum',
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     Total_Var = colDef(
+      name = "Total",
+      maxWidth = 80,
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalTotal_2025 = 0
+        let totalTotal_2026 = 0
+        rows.forEach(function(row) {
+          totalTotal_2025 += row['Total_2025']
+          totalTotal_2026 += row['Total_2026']
+        })
+        return (totalTotal_2026 - totalTotal_2025) || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['Total_Var']
+        if (value > 0) {
+          var color = '#008000'
+        } else {
+          var color = ' #e00000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     Anthem_Var = colDef(
+      name = "Anthem",
+      maxWidth = 80,
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalAnthem_2025 = 0
+        let totalAnthem_2026 = 0
+        rows.forEach(function(row) {
+          totalAnthem_2025 += row['Anthem_2025']
+          totalAnthem_2026 += row['Anthem_2026']
+        })
+        return (totalAnthem_2026 - totalAnthem_2025) || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['Anthem_Var']
+        if (value > 0) {
+          var color = '#008000'
+        } else {
+          var color = ' #e00000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     Medicare_Advantage_Var = colDef(
+      name = "Medicare Advantage",
+      maxWidth = 80,
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalMedicare_Advantage_2025 = 0
+        let totalMedicare_Advantage_2026 = 0
+        rows.forEach(function(row) {
+          totalMedicare_Advantage_2025 += row['Medicare_Advantage_2025']
+          totalMedicare_Advantage_2026 += row['Medicare_Advantage_2026']
+        })
+        return (totalMedicare_Advantage_2026 - totalMedicare_Advantage_2025) || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['Medicare_Advantage_Var']
+        if (value > 0) {
+          var color = '#008000'
+        } else {
+          var color = ' #e00000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     MSS_Attributed_Var = colDef(
+      name = "MSS Attributed",
+      maxWidth = 80,
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalMSS_Attributed_2025 = 0
+        let totalMSS_Attributed_2026 = 0
+        rows.forEach(function(row) {
+          totalMSS_Attributed_2025 += row['MSS_Attributed_2025']
+          totalMSS_Attributed_2026 += row['MSS_Attributed_2026']
+        })
+        return (totalMSS_Attributed_2026 - totalMSS_Attributed_2025) || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['MSS_Attributed_Var']
+        if (value > 0) {
+          var color = '#008000'
+        } else {
+          var color = ' #e00000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     Other_Payor_Var = colDef(
+      name = "Other Payor",
+      maxWidth = 80,
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalOther_Payor_2025 = 0
+        let totalOther_Payor_2026 = 0
+        rows.forEach(function(row) {
+          totalOther_Payor_2025 += row['Other_Payor_2025']
+          totalOther_Payor_2026 += row['Other_Payor_2026']
+        })
+        return (totalOther_Payor_2026 - totalOther_Payor_2025) || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['Other_Payor_Var']
+        if (value > 0) {
+          var color = '#008000'
+        } else {
+          var color = ' #e00000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(separators = TRUE, digits = 0)),
+     
+     Total_Var_Perc = colDef(
+      name = "Total",
+      maxWidth = 80,
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalTotal_2025 = 0
+        let totalTotal_2026 = 0
+        rows.forEach(function(row) {
+          totalTotal_2025 += row['Total_2025']
+          totalTotal_2026 += row['Total_2026']
+        })
+        return (totalTotal_2026 - totalTotal_2025) / totalTotal_2025 || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['Total_Var_Perc']
+        if (value > 0) {
+          var color = '#008000'
+        } else {
+          var color = ' #e00000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)),
+     
+     Anthem_Var_Perc = colDef(
+      name = "Anthem",
+      maxWidth = 80,
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalAnthem_2025 = 0
+        let totalAnthem_2026 = 0
+        rows.forEach(function(row) {
+          totalAnthem_2025 += row['Anthem_2025']
+          totalAnthem_2026 += row['Anthem_2026']
+        })
+        return (totalAnthem_2026 - totalAnthem_2025) / totalAnthem_2025 || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['Anthem_Var_Perc']
+        if (value > 0) {
+          var color = '#008000'
+        } else {
+          var color = ' #e00000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)),
+     
+     Medicare_Advantage_Var_Perc = colDef(
+      name = "Medicare Advantage",
+      maxWidth = 80,
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalMedicare_Advantage_2025 = 0
+        let totalMedicare_Advantage_2026 = 0
+        rows.forEach(function(row) {
+          totalMedicare_Advantage_2025 += row['Medicare_Advantage_2025']
+          totalMedicare_Advantage_2026 += row['Medicare_Advantage_2026']
+        })
+        return (totalMedicare_Advantage_2026 - totalMedicare_Advantage_2025) / totalMedicare_Advantage_2025 || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['Medicare_Advantage_Var_Perc']
+        if (value > 0) {
+          var color = '#008000'
+        } else {
+          var color = ' #e00000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)),
+     
+     MSS_Attributed_Var_Perc = colDef(
+      name = "MSS Attributed",
+      maxWidth = 80,
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalMSS_Attributed_2025 = 0
+        let totalMSS_Attributed_2026 = 0
+        rows.forEach(function(row) {
+          totalMSS_Attributed_2025 += row['MSS_Attributed_2025']
+          totalMSS_Attributed_2026 += row['MSS_Attributed_2026']
+        })
+        return (totalMSS_Attributed_2026 - totalMSS_Attributed_2025) / totalMSS_Attributed_2025 || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['MSS_Attributed_Var_Perc']
+        if (value > 0) {
+          var color = '#008000'
+        } else {
+          var color = ' #e00000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)),
+     
+     Other_Payor_Var_Perc = colDef(
+      name = "Other Payor",
+      maxWidth = 80,
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalOther_Payor_2025 = 0
+        let totalOther_Payor_2026 = 0
+        rows.forEach(function(row) {
+          totalOther_Payor_2025 += row['Other_Payor_2025']
+          totalOther_Payor_2026 += row['Other_Payor_2026']
+        })
+        return (totalOther_Payor_2026 - totalOther_Payor_2025) / totalOther_Payor_2025 || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['Other_Payor_Var_Perc']
+        if (value > 0) {
+          var color = '#008000'
+        } else {
+          var color = ' #e00000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1))
+     
+  ) # Close Columns
+
+  ) # Close Reactable
+) # Close Taglist
+) # Close htmltools
+
+```
+
+
+## Anthem Volume Impact (MTD)
+```{r Volume Comparison by Group Sites Only, echo = FALSE, warning = FALSE, message = FALSE}
+
+
+htmltools::browsable(
+  tagList(
+    tags$button(
+      tagList(fontawesome::fa("download"), "Download Table"),
+      onclick = "Reactable.downloadDataCSV('anthem-volume-sites-mtd', 'Anthem Volume Impact (Sites)')"
+    ),
+
+# htmltools::browsable(
+#   tagList(
+#     div(tags$label("Summary by", `for` = "access-roi")),
+#     tags$select(
+#       id = "access-roi",
+#       onchange = "Reactable.setGroupBy('access-metrics', this.value ? [this.value] : [])",
+#       tags$option("None", value = ""),
+#       lapply(c("Year", "Month"), tags$option)
+#     ),
+# 
+#     tags$hr("aria-hidden" = "true"),
+    
+reactable(
+  mtd_volume_comparison_group_summary2 %>%
+    filter(SITE %in% c("MSBI", "MSDMG", "MSH- AMBULATORY CARE", "MSH-MSDFP", "MSM", "MSQ",
+                       "MSUS", "MSW", "NETWORK", "NYEE", "MSB")),
+  elementId = "anthem-volume-sites",
+  # elementId = "referral-vol-download-table",
+  style = list(fontFamily = 'Calibri',
+                 fontSize = '14px'),
+    defaultColDef = colDef(align = "left",
+                           headerStyle = list(fontWeight = "Bold", fontSize = "14px"),
+                           headerClass = "bar-sort-header"),
+  # RowStyle = function(index) {
+  #           if (index %in% c(nrow(referral_vol_site_data_mshs))) {
+  #             list(`border-top` = "2px solid rgb(184,184,184)",
+  #                  fontWeight = "Bold")
+  #           }
+  #         },
+    highlight = TRUE,
+    # filterable = TRUE,
+    pagination = FALSE,
+    # height = 800,
+    wrap = TRUE,
+  searchable = TRUE,
+
+  groupBy = c("MSHS", "SITE", "DEPT_SPECIALTY_NAME"),
+
+  columnGroups = list(
+    colGroup(name = "", columns = c("MSHS", "SITE", "DEPT_SPECIALTY_NAME", "DEPARTMENT_NAME", "DEPARTMENT_ID"),
+             headerStyle = list(color = "black", fontSize = "15px"),
+             sticky = "left"),
+    colGroup(name = paste0("2025 Completed Visits (", format(as.Date(mtd_start_2025), "%m/%d"),"-",format(as.Date(mtd_end_2025), "%m/%d"),")"),
+             columns = c("Total_2025", "Anthem_2025", "Medicare_Advantage_2025", "MSS_Attributed_2025", "Other_Payor_2025"),
+             headerStyle = list(background = "#7f7f7f", color = "white", fontSize = "15px")),
+    colGroup(name = paste0("2026 Completed Visits (", format(as.Date(mtd_start_2026), "%m/%d"),"-",format(as.Date(mtd_end_2026), "%m/%d"),")"),
              columns = c("Total_2026", "Anthem_2026", "Medicare_Advantage_2026", "MSS_Attributed_2026", "Other_Payor_2026"),
              headerStyle = list(background = "#212070", color = "white", fontSize = "15px")),
     colGroup(name = paste0("Volume Variance"),
@@ -2937,7 +3443,7 @@ reactable(
 <!-- ``` -->
 
 ## Note
-### Count of Weekdays for 2025 vs. 2026 Volume Comparison
+### Count of Weekdays for 2025 vs. 2026 Volume Comparison (YoY)
 ```{r Notes}
 
     
@@ -2965,3 +3471,33 @@ reactable(
 
 ```
 
+<br/>
+<br/>
+
+### Count of Weekdays for 2025 vs. 2026 Volume Comparison (MTD)
+```{r Notes}
+
+    
+reactable(
+  mtd_appt_day_comparison,
+  style = list(fontFamily = 'Calibri',
+                 fontSize = '14px'),
+    defaultColDef = colDef(align = "left",
+                           headerStyle = list(fontWeight = "Bold", fontSize = "14px"),
+                           headerClass = "bar-sort-header"),
+  # RowStyle = function(index) {
+  #           if (index %in% c(nrow(referral_vol_site_data_mshs))) {
+  #             list(`border-top` = "2px solid rgb(184,184,184)",
+  #                  fontWeight = "Bold")
+  #           }
+  #         },
+    highlight = TRUE,
+    # filterable = TRUE,
+    pagination = FALSE,
+    # height = 800,
+    wrap = TRUE,
+  searchable = TRUE
+
+  ) # Close Reactable
+
+```
