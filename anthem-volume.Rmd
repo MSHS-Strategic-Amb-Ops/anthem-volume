@@ -714,7 +714,7 @@ mtd_start_2026 <- floor_date(mtd_end_2026, "month")
 num_days <- as.numeric(mtd_end_2026 - mtd_start_2026) + 1
 
 mtd_end_2025 <- as.Date(paste0("2025-", sprintf("%02d", month(mtd_end_2026 + 1)), "-",sprintf("%02d", day(mtd_end_2026 + 1))))
-mtd_start_2025 <- date_end_2025 - (num_days - 1)
+mtd_start_2025 <- mtd_end_2025 - (num_days - 1)
 
 
 mtd_start_2026 <- format(as.Date(mtd_start_2026), "%Y-%m-%d")
