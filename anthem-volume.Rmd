@@ -711,7 +711,7 @@ appt_day_comparison <- volume_comparison2_group %>%
 mtd_end_2026 <- Sys.Date() - 1
 mtd_start_2026 <- floor_date(mtd_end_2026, "month")
 
-num_days <- as.numeric(mtd_end_2026 - march_start_2026) + 1
+num_days <- as.numeric(mtd_end_2026 - mtd_start_2026) + 1
 
 mtd_end_2025 <- as.Date(paste0("2025-", sprintf("%02d", month(mtd_end_2026 + 1)), "-",sprintf("%02d", day(mtd_end_2026 + 1))))
 mtd_start_2025 <- date_end_2025 - (num_days - 1)
@@ -1778,7 +1778,7 @@ reactable(
   mtd_volume_comparison_group_summary2 %>%
     filter(SITE %in% c("MSBI", "MSDMG", "MSH- AMBULATORY CARE", "MSH-MSDFP", "MSM", "MSQ",
                        "MSUS", "MSW", "NETWORK", "NYEE", "MSB")),
-  elementId = "anthem-volume-sites",
+  elementId = "anthem-volume-sites-mtd",
   # elementId = "referral-vol-download-table",
   style = list(fontFamily = 'Calibri',
                  fontSize = '14px'),
