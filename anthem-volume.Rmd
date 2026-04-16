@@ -1141,7 +1141,7 @@ last_7day_bookings_leadDays_export <- access_raw_tbl %>%
   filter(LEAD_DAYS > 14) %>%
   filter(DERIVED_STATUS_DESC == "Scheduled") %>%
   dplyr::select(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, PROV_NAME_WID, 
-                PAT_ENC_CSN_ID, PAT_NAME, MRN, APPT_DTTM, APPT_MADE_DTTM, LEAD_DAYS, APPT_STATUS_NAME, VISITPLAN, FINCLASS, SCHED_METHOD, PAT_ONLINE_YN) %>%
+                PAT_ENC_CSN_ID, PAT_NAME, MRN, APPT_DTTM, APPT_MADE_DTTM, LEAD_DAYS, APPT_STATUS_NAME, PRC_NAME, VISITPLAN, FINCLASS, SCHED_METHOD, PAT_ONLINE_YN) %>%
   collect() 
 
 last_7day_bookings_leadDays_export <- last_7day_bookings_leadDays_export %>%
