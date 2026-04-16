@@ -1140,14 +1140,16 @@ last_7day_bookings_leadDays_export <- access_raw_tbl %>%
   mutate(LEAD_DAYS = CONTACT_DATE - APPT_MADE_DATE) %>%
   filter(LEAD_DAYS > 14) %>%
   filter(DERIVED_STATUS_DESC == "Scheduled") %>%
+  mutate(VISIT_TYPE = ifelse(is.na(VISIT_GROUP_NUM), "EST", "NEW")) %>%
   dplyr::select(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, PROV_NAME_WID, 
-                PAT_ENC_CSN_ID, PAT_NAME, MRN, APPT_DTTM, APPT_MADE_DTTM, LEAD_DAYS, APPT_STATUS_NAME, PRC_NAME, VISITPLAN, FINCLASS, SCHED_METHOD, PAT_ONLINE_YN) %>%
+                PAT_ENC_CSN_ID, PAT_NAME, MRN, APPT_DTTM, APPT_MADE_DTTM, LEAD_DAYS, APPT_STATUS_NAME, PRC_NAME, VISIT_TYPE, VISITPLAN, FINCLASS, SCHED_METHOD, PAT_ONLINE_YN) %>%
   collect() 
 
 last_7day_bookings_leadDays_export <- last_7day_bookings_leadDays_export %>%
   arrange(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, PROV_NAME_WID) %>%
   mutate(APPT_DTTM = as.character(APPT_DTTM),
-         APPT_MADE_DTTM = as.character(APPT_MADE_DTTM))
+         APPT_MADE_DTTM = as.character(APPT_MADE_DTTM),
+         PAT_ENC_CSN_ID = as.character(PAT_ENC_CSN_ID))
 
 
 ```
@@ -2569,7 +2571,6 @@ reactable(
 ```
 
 
-
 ## Time to Appt (Last 7 Days)
 ```{r Time to Appointment, echo = FALSE, warning = FALSE, message = FALSE}
 
@@ -2831,7 +2832,7 @@ htmltools::browsable(
   tagList(
     tags$button(
       tagList(fontawesome::fa("download"), "Download Table"),
-      onclick = "Reactable.downloadDataCSV('appts-scheduled-14days', 'Anthem Appts Scheduled >14 Days')"
+      onclick = "Reactable.downloadDataCSV('appts-scheduled-14days', 'Anthem Appt Scheduled >14 Days')"
     ),
     reactable(last_7day_bookings_leadDays_export,
               elementId = "appts-scheduled-14days",
