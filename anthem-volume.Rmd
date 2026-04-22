@@ -1060,6 +1060,8 @@ date_last_7days <- format(Sys.Date() -7, "%Y-%m-%d")
 
 
 last_7day_bookings_leadDays <- access_raw_tbl %>%
+  filter(SITE %in% c("MSB", "MSBI", "MSDMG", "MSH- AMBULATORY CARE", "MSH-MSDFP", "MSM", "MSQ",
+                       "MSUS", "MSW", "NETWORK", "NYEE", "MSB", "MSSN")) %>%
   left_join(f_sched_appt_tbl %>%
               dplyr::select(PAT_ENC_CSN_ID, PAT_ONLINE_YN)) %>%
   left_join(finclass_tbl %>% 
@@ -1088,7 +1090,8 @@ last_7day_bookings_leadDays <- access_raw_tbl %>%
   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
   mutate(appt_year = year(CONTACT_DATE),
          appt_month = month(CONTACT_DATE)) %>%
-  group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, ANTHEM, lead_14days) %>%
+  # group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, ANTHEM, lead_14days) %>%
+  group_by(ANTHEM, appt_year, appt_month) %>%
   summarise(total = n()) %>%
   collect() 
 
@@ -1153,7 +1156,6 @@ last_7day_bookings_leadDays_export <- last_7day_bookings_leadDays_export %>%
 
 
 ```
-
 
 
 ```{r Sinai Logo, echo=FALSE, out.width = '15%'}
@@ -2844,4 +2846,63 @@ htmltools::browsable(
   ))
 
 ```
+
+
+## Note
+### Count of Weekdays for 2025 vs. 2026 Volume Comparison (YoY)
+```{r Notes YoY}
+
+    
+reactable(
+  appt_day_comparison,
+  style = list(fontFamily = 'Calibri',
+                 fontSize = '14px'),
+    defaultColDef = colDef(align = "left",
+                           headerStyle = list(fontWeight = "Bold", fontSize = "14px"),
+                           headerClass = "bar-sort-header"),
+  # RowStyle = function(index) {
+  #           if (index %in% c(nrow(referral_vol_site_data_mshs))) {
+  #             list(`border-top` = "2px solid rgb(184,184,184)",
+  #                  fontWeight = "Bold")
+  #           }
+  #         },
+    highlight = TRUE,
+    # filterable = TRUE,
+    pagination = FALSE,
+    # height = 800,
+    wrap = TRUE,
+  searchable = TRUE
+
+  ) # Close Reactable
+
+```
+
+
+### Count of Weekdays for 2025 vs. 2026 Volume Comparison (MTD)
+```{r Notes MTD}
+
+reactable(
+  mtd_appt_day_comparison,
+  style = list(fontFamily = 'Calibri',
+                 fontSize = '14px'),
+    defaultColDef = colDef(align = "left",
+                           headerStyle = list(fontWeight = "Bold", fontSize = "14px"),
+                           headerClass = "bar-sort-header"),
+  # RowStyle = function(index) {
+  #           if (index %in% c(nrow(referral_vol_site_data_mshs))) {
+  #             list(`border-top` = "2px solid rgb(184,184,184)",
+  #                  fontWeight = "Bold")
+  #           }
+  #         },
+    highlight = TRUE,
+    # filterable = TRUE,
+    pagination = FALSE,
+    # height = 800,
+    wrap = TRUE,
+  searchable = TRUE
+
+  ) # Close Reactable
+
+```
+
 
