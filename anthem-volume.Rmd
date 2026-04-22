@@ -1054,7 +1054,7 @@ last_7day_bookings <- last_7day_bookings %>%
 
 
 
-```{r Appt Scheduled Last 7 Days LEad}
+```{r Appt Scheduled Last 7 Days Lead}
 
 date_last_7days <- format(Sys.Date() -7, "%Y-%m-%d")
 
@@ -1090,8 +1090,8 @@ last_7day_bookings_leadDays <- access_raw_tbl %>%
   mutate(lead_14days = ifelse(lead_days <= 14, "lead_14days", "lead_14days_more")) %>%
   mutate(appt_year = year(CONTACT_DATE),
          appt_month = month(CONTACT_DATE)) %>%
-  # group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, ANTHEM, lead_14days) %>%
-  group_by(ANTHEM, appt_year, appt_month) %>%
+  group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, ANTHEM, lead_14days) %>%
+  # group_by(ANTHEM, appt_year, appt_month) %>%
   summarise(total = n()) %>%
   collect() 
 
