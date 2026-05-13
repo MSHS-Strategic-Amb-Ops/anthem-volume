@@ -3435,7 +3435,7 @@ future_mcr_adv_ind_mrkt_export <- access_raw_tbl %>%
   collect() 
 
 future_mcr_adv_ind_mrkt_export <- future_mcr_adv_ind_mrkt_export %>%
-  arrange(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, PROV_NAME_WID) %>%
+  arrange(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, PROV_NAME_WID, APPT_DTTM) %>%
   mutate(APPT_DTTM = as.character(APPT_DTTM),
          APPT_MADE_DTTM = as.character(APPT_MADE_DTTM),
          PAT_ENC_CSN_ID = as.character(PAT_ENC_CSN_ID))
