@@ -396,6 +396,24 @@ visitFact_conn <- tbl(conn5, dbplyr::ident_q('"Caboodle"."VisitFact"'))
 
 
 
+```{r}
+
+# practice_list <- access_raw_tbl %>%
+#   left_join(clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE)) %>%
+#   left_join(clarity_ser_2_tbl %>% 
+#               dplyr::select(PROV_ID, NPI)) %>%
+#   filter(year(CONTACT_DATE) >= 2025) %>%
+#   filter(DERIVED_STATUS_DESC == "Arrived") %>%
+#   mutate(year = year(CONTACT_DATE)) %>%
+#   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, PROV_NAME_WID, PROV_ID, NPI, PROV_TYPE, year) %>%
+#   summarise(arrived_visits = n()) %>%
+#   collect() %>%
+#   pivot_wider(names_from = "year",
+#               values_from = arrived_visits)
+
+```
+
+
 ```{r Report Variables, echo = FALSE, warning = FALSE, message = FALSE}
 
 report_run_date <- Sys.Date()
@@ -542,11 +560,11 @@ date_end_2026 <- format(Sys.Date()-1, "%Y-%m-%d")
 # date_end_2026 <-  format(as.Date("2026-03-31"), "%Y-%m-%d")
 
 
-# date_start_2025 <- format(as.Date("2025-03-01"), "%Y-%m-%d")
-# date_end_2025 <- format(as.Date("2025-03-12"), "%Y-%m-%d")
-# 
-# date_start_2026 <- format(as.Date("2026-03-01"), "%Y-%m-%d")
-# date_end_2026 <- format(as.Date("2026-03-11"), "%Y-%m-%d")
+date_start_2025 <- format(as.Date("2025-01-06"), "%Y-%m-%d")
+date_end_2025 <- format(as.Date("2025-05-01"), "%Y-%m-%d")
+
+date_start_2026 <- format(as.Date("2026-01-05"), "%Y-%m-%d")
+date_end_2026 <- format(as.Date("2026-04-30"), "%Y-%m-%d")
 
 # jan_vol_plans <- jan_vol %>%
 #   left_join(anthem_plans2,
@@ -611,7 +629,56 @@ volume_by_payor_summary <- volume_by_payor %>%
 ```
 
 
+```{r Anthem Visit Volume 2025 vs. 2026 Month}
+
+volume <- access_raw_tbl %>%
+  # filter(SITE == "MSDMG") %>%
+  left_join(finclass_tbl %>%
+              filter(PRD_TYPE == "EXCHANGE") %>%
+              dplyr::select(PLAN_NAME, PRD_TYPE) %>%
+              distinct(),
+            by = c("VISITPLAN" = "PLAN_NAME")) %>%
+  left_join(tbl(conn2, "PATIENT_FYI_FLAGS") %>%
+              filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)) %>%
+              group_by(PATIENT_ID) %>%
+              filter(LAST_UPDATE_INST == max(LAST_UPDATE_INST, na.rm = TRUE)) %>%
+              filter(ACCT_NOTE_INSTANT == max(ACCT_NOTE_INSTANT)) %>%
+              dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C),
+            by = c("PAT_ID" = "PATIENT_ID")) %>%
+  mutate(FINCLASS = case_when(PRD_TYPE == "EXCHANGE" ~ "EXCHANGE", TRUE ~ FINCLASS)) %>%
+  mutate(MSS_GROUP = case_when(GROUP_NUM %in% mss_exclusion_list ~ "MSS", TRUE ~ "")) %>%
+  mutate(ANTHEM = case_when(VISITPLAN %in% anthem_plan_list ~ "Anthem", TRUE ~ NA)) %>%
+  mutate(ANTHEM = case_when(VISITPLAN %in% anthem_mcr_adv_list ~ "Medicare_Advantage", TRUE ~ ANTHEM)) %>%
+  mutate(ANTHEM = case_when(VISITPLAN %in% anthem_individual_list ~ "Individual_Marketplace", TRUE ~ ANTHEM)) %>%
+  mutate(ANTHEM = case_when(is.na(ANTHEM) ~ "Other_Payor", TRUE ~ ANTHEM)) %>%
+  filter(year(CONTACT_DATE)>=2025) %>%
+  filter(DERIVED_STATUS_DESC == "Arrived") %>%
+  # filter((CONTACT_DATE >= TO_DATE(date_start_2025, "YYYY-MM-DD HH24:MI:SS") & CONTACT_DATE <= TO_DATE(date_end_2025, "YYYY-MM-DD HH24:MI:SS")) |
+  #          (CONTACT_DATE >= TO_DATE(date_start_2026, "YYYY-MM-DD HH24:MI:SS") & CONTACT_DATE <= TO_DATE(date_end_2026, "YYYY-MM-DD HH24:MI:SS"))) %>%
+  mutate(appt_year = year(CONTACT_DATE),
+         appt_month = month(CONTACT_DATE),
+         week_start = sql("TRUNC(CONTACT_DATE, 'IW')"),
+         appt_day = sql("TO_CHAR(CONTACT_DATE, 'DY')")
+         ) %>%
+  # group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, DERIVED_STATUS_DESC,
+  #          # PAT_ENC_CSN_ID, PAT_NAME, MRN, APPT_DTTM, APPT_MADE_DTTM, PROV_NAME_WID, VISITPLAN,
+  #          CONTACT_DATE, appt_year, appt_month, ANTHEM) %>%
+  # group_by(SITE,appt_year, appt_month) %>%
+  group_by(appt_year, appt_month, SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID,
+           ANTHEM) %>%
+  summarise(total = n()) %>%
+  collect()
+
+# 
+# require(openxlsx)
+# write.xlsx(volume, "Ambulatory Volume_050126.xlsx")
+```
+
+
+
+
 ```{r Anthem Visit Volume 2025 vs. 2026}
+
 
 volume_comparison_check <- access_raw_tbl %>%
   # filter(SITE == "MSDMG") %>%
@@ -645,17 +712,17 @@ volume_comparison_check <- access_raw_tbl %>%
   # group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, DERIVED_STATUS_DESC,
   #          # PAT_ENC_CSN_ID, PAT_NAME, MRN, APPT_DTTM, APPT_MADE_DTTM, PROV_NAME_WID, VISITPLAN,
   #          CONTACT_DATE, appt_year, appt_month, ANTHEM) %>%
-  # group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, week_start) %>%
-  group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID,
-           appt_year, ANTHEM) %>%
+  group_by(SITE,appt_year, appt_month) %>%
+  # group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID,
+  #          appt_year, ANTHEM) %>%
   summarise(total = n()) %>%
   collect()
   
 
-
-# require(openxlsx)
-# write.xlsx(volume_comparison_check, "YoY Volume Comparison_041026.xlsx")
 # 
+# require(openxlsx)
+# write.xlsx(volume_comparison_check, "YoY Volume Comparison_050126.xlsx")
+
 # volume_comparison2_group <- volume_comparison_check %>%
 #   mutate(appt_day = wday(CONTACT_DATE, label = TRUE)) %>%
 #   mutate(
@@ -3339,6 +3406,60 @@ htmltools::browsable(
 ```
 
 
+## Anthem MCR Adv and Ind Mrkt: Export
+```{r Anthem Medicare Advantage and Individual Marketplace Export, echo = FALSE, warning = FALSE, message = FALSE}
+
+
+future_mcr_adv_ind_mrkt_export <- access_raw_tbl %>%
+  left_join(finclass_tbl %>% 
+              filter(PRD_TYPE == "EXCHANGE") %>%
+              dplyr::select(PLAN_NAME, PRD_TYPE) %>%
+              distinct(), 
+            by = c("VISITPLAN" = "PLAN_NAME")) %>%
+  left_join(tbl(conn2, "PATIENT_FYI_FLAGS") %>%
+              filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)) %>%
+              group_by(PATIENT_ID) %>%
+              filter(LAST_UPDATE_INST == max(LAST_UPDATE_INST, na.rm = TRUE)) %>%
+              filter(ACCT_NOTE_INSTANT == max(ACCT_NOTE_INSTANT)) %>%
+              dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C),
+            by = c("PAT_ID" = "PATIENT_ID")) %>%
+  mutate(FINCLASS = case_when(PRD_TYPE == "EXCHANGE" ~ "EXCHANGE", TRUE ~ FINCLASS)) %>%
+  filter(VISITPLAN %in% anthem_mcr_adv_list | VISITPLAN %in% anthem_individual_list) %>%
+  mutate(ANTHEM = case_when(VISITPLAN %in% anthem_mcr_adv_list ~ "Anthem Medicare_Advantage",
+                            VISITPLAN %in% anthem_individual_list ~ "Anthem Individual_Marketplace") )%>%
+  filter(year(CONTACT_DATE)==2026) %>%
+  filter(DERIVED_STATUS_DESC == "Scheduled") %>%
+  dplyr::select(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, PROV_NAME_WID, 
+                PAT_ENC_CSN_ID, PAT_NAME, MRN, APPT_DTTM, APPT_MADE_DTTM, APPT_STATUS_NAME, PRC_NAME, 
+                VISIT_TYPE, VISITPLAN, ANTHEM, FINCLASS, SCHED_METHOD) %>%
+  collect() 
+
+future_mcr_adv_ind_mrkt_export <- future_mcr_adv_ind_mrkt_export %>%
+  arrange(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, PROV_NAME_WID) %>%
+  mutate(APPT_DTTM = as.character(APPT_DTTM),
+         APPT_MADE_DTTM = as.character(APPT_MADE_DTTM),
+         PAT_ENC_CSN_ID = as.character(PAT_ENC_CSN_ID))
+
+
+
+htmltools::browsable(
+  tagList(
+    tags$button(
+      tagList(fontawesome::fa("download"), "Download Table"),
+      onclick = "Reactable.downloadDataCSV('anthem-exc-scheduled-appts', 'Upcoming Appts_MCR Adv_Ind Mrkt')"
+    ),
+    reactable(future_mcr_adv_ind_mrkt_export,
+              elementId = "anthem-exc-scheduled-appts",
+              style = list(fontFamily = 'Calibri',
+                 fontSize = '14px'),
+    defaultColDef = colDef(align = "left",
+                           headerStyle = list(fontWeight = "Bold", fontSize = "14px"),
+                           headerClass = "bar-sort-header"))
+  ))
+
+```
+
+
 ## Note
 ### Count of Weekdays for 2025 vs. 2026 Volume Comparison (YoY)
 ```{r Notes YoY}
@@ -3397,971 +3518,971 @@ reactable(
 ```
 
 
-## Performance by Week (Physicians Only)
-*Performance by Week excludes any weeks with Mount Sinai observed holidays*<br/>
-```{r KPI Tracker}
+<!-- ## Performance by Week (Physicians Only) -->
+<!-- *Performance by Week excludes any weeks with Mount Sinai observed holidays*<br/> -->
+<!-- ```{r KPI Tracker} -->
 
-htmltools::browsable(
-  tagList(
-    tags$button(
-      tagList(fontawesome::fa("download"), "Download Table"),
-      onclick = "Reactable.downloadDataCSV('performance-tracker', 'Volume Rebuild Progress')"
-    ),
+<!-- htmltools::browsable( -->
+<!--   tagList( -->
+<!--     tags$button( -->
+<!--       tagList(fontawesome::fa("download"), "Download Table"), -->
+<!--       onclick = "Reactable.downloadDataCSV('performance-tracker', 'Volume Rebuild Progress')" -->
+<!--     ), -->
 
-# htmltools::browsable(
-#   tagList(
-#     div(tags$label("Summary by", `for` = "access-roi")),
-#     tags$select(
-#       id = "access-roi",
-#       onchange = "Reactable.setGroupBy('access-metrics', this.value ? [this.value] : [])",
-#       tags$option("None", value = ""),
-#       lapply(c("Year", "Month"), tags$option)
-#     ),
-# 
-#     tags$hr("aria-hidden" = "true"),
-    
-reactable(
-  merged_data %>%
-    filter(SITE %in% c("MSB", "MSBI", "MSDMG", "MSH- AMBULATORY CARE", "MSH-MSDFP", "MSM", "MSQ",
-                       "MSUS", "MSW", "NETWORK", "NYEE", "MSB")) %>%
-    filter(PROV_TYPE == "Physician") %>%
-    filter(is.na(holiday)),
-  elementId = "performance-tracker",
-  # elementId = "referral-vol-download-table",
-  style = list(fontFamily = 'Calibri',
-                 fontSize = '14px'),
-    defaultColDef = colDef(align = "left",
-                           headerStyle = list(fontWeight = "Bold", fontSize = "14px"),
-                           headerClass = "bar-sort-header"),
-  # RowStyle = function(index) {
-  #           if (index %in% c(nrow(referral_vol_site_data_mshs))) {
-  #             list(`border-top` = "2px solid rgb(184,184,184)",
-  #                  fontWeight = "Bold")
-  #           }
-  #         },
-    highlight = TRUE,
-    # filterable = TRUE,
-    pagination = FALSE,
-    # height = 800,
-    wrap = TRUE,
-  searchable = TRUE,
+<!-- # htmltools::browsable( -->
+<!-- #   tagList( -->
+<!-- #     div(tags$label("Summary by", `for` = "access-roi")), -->
+<!-- #     tags$select( -->
+<!-- #       id = "access-roi", -->
+<!-- #       onchange = "Reactable.setGroupBy('access-metrics', this.value ? [this.value] : [])", -->
+<!-- #       tags$option("None", value = ""), -->
+<!-- #       lapply(c("Year", "Month"), tags$option) -->
+<!-- #     ), -->
+<!-- #  -->
+<!-- #     tags$hr("aria-hidden" = "true"), -->
 
-  groupBy = c("appt_week","SITE","STANDARD_ADDRESS","DEPT_SPECIALTY_NAME","DEPARTMENT_NAME","PROV_TYPE"),
+<!-- reactable( -->
+<!--   merged_data %>% -->
+<!--     filter(SITE %in% c("MSB", "MSBI", "MSDMG", "MSH- AMBULATORY CARE", "MSH-MSDFP", "MSM", "MSQ", -->
+<!--                        "MSUS", "MSW", "NETWORK", "NYEE", "MSB")) %>% -->
+<!--     filter(PROV_TYPE == "Physician") %>% -->
+<!--     filter(is.na(holiday)), -->
+<!--   elementId = "performance-tracker", -->
+<!--   # elementId = "referral-vol-download-table", -->
+<!--   style = list(fontFamily = 'Calibri', -->
+<!--                  fontSize = '14px'), -->
+<!--     defaultColDef = colDef(align = "left", -->
+<!--                            headerStyle = list(fontWeight = "Bold", fontSize = "14px"), -->
+<!--                            headerClass = "bar-sort-header"), -->
+<!--   # RowStyle = function(index) { -->
+<!--   #           if (index %in% c(nrow(referral_vol_site_data_mshs))) { -->
+<!--   #             list(`border-top` = "2px solid rgb(184,184,184)", -->
+<!--   #                  fontWeight = "Bold") -->
+<!--   #           } -->
+<!--   #         }, -->
+<!--     highlight = TRUE, -->
+<!--     # filterable = TRUE, -->
+<!--     pagination = FALSE, -->
+<!--     # height = 800, -->
+<!--     wrap = TRUE, -->
+<!--   searchable = TRUE, -->
 
-  columnGroups = list(
-    colGroup(name = "", columns = c("appt_week"),
-             headerStyle = list(color = "black", fontSize = "15px"),
-             sticky = "left"),
-    colGroup(name = "", columns = c("SITE","STANDARD_ADDRESS","DEPT_SPECIALTY_NAME","DEPARTMENT_NAME","PROV_TYPE", "PROV_NAME_WID"),
-             headerStyle = list(color = "black", fontSize = "15px")),
-    colGroup(name = paste0("Arrived Visits"),
-             columns = c("Arrived_AVG", "Arrived_FRIDAY", "Arrived_VAR", "Arrived_VAR_PERC"),
-             headerStyle = list(background = "#7f7f7f", color = "white", fontSize = "15px")),
-    colGroup(name = paste0("Practicing Physicians"),
-             columns = c("md_cnt_AVG", "md_cnt_FRIDAY", "md_cnt_VAR", "md_cnt_VAR_PERC"),
-             headerStyle = list(background = "#212070", color = "white", fontSize = "15px")),
-    colGroup(name = paste0("Sessions"),
-             columns = c("session_cnt_AVG", "session_cnt_FRIDAY", "session_cnt_VAR", "session_cnt_VAR_PERC"),
-             headerStyle = list(background = "#d80b8c", color = "white", fontSize = "15px")),
-    colGroup(name = paste0("Unfilled Slots"),
-             columns = c("unfilled_cnt_AVG", "unfilled_cnt_FRIDAY", "unfilled_cnt_VAR", "unfilled_cnt_VAR_PERC"),
-             headerStyle = list(background = "#00aeef", color = "white", fontSize = "15px")),
-    colGroup(name = paste0("No Show Rate"),
-             columns = c("No_Show_Rate_AVG", "No_Show_Rate_FRIDAY"),
-             headerStyle = list(background = "#a5a7a5", color = "white", fontSize = "15px"))
-    ),
+<!--   groupBy = c("appt_week","SITE","STANDARD_ADDRESS","DEPT_SPECIALTY_NAME","DEPARTMENT_NAME","PROV_TYPE"), -->
 
-  columns = list(
-# 
-#      appt_year = colDef(
-#       name = "Year",
-#       maxWidth = 100),
-     
-     appt_week = colDef(
-      name = "Week",
-      minWidth = 200),
-     
-     SITE = colDef(
-      name = "Site",
-      minWidth = 200),
-     
-     STANDARD_ADDRESS = colDef(
-      name = "Location",
-      minWidth = 400),
-     
-     DEPT_SPECIALTY_NAME = colDef(
-      name = "Specialty",
-      minWidth = 200),
-     
-     DEPARTMENT_NAME = colDef(
-      name = "Department",
-      minWidth = 200),
-     
-     PROV_TYPE = colDef(
-      name = "Provider Type",
-      minWidth = 200),
-     
-     PROV_NAME_WID = colDef(
-      name = "Provider",
-      minWidth = 200),
-     
-     Arrived_AVG = colDef(
-      name = "Mon-Thu Avg",
-      maxWidth = 80,
-      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     Arrived_FRIDAY = colDef(
-      name = "Fri",
-      maxWidth = 80,
-      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     Arrived_VAR = colDef(
-      name = "Var",
-      maxWidth = 80,
-      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalArrived_AVG = 0
-        let totalArrived_FRIDAY = 0
-        rows.forEach(function(row) {
-          totalArrived_AVG += row['Arrived_AVG']
-          totalArrived_FRIDAY += row['Arrived_FRIDAY']
-        })
-        return (totalArrived_FRIDAY - totalArrived_AVG) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['Arrived_VAR']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     Arrived_VAR_PERC = colDef(
-      name = "% Var",
-      maxWidth = 80,
-      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalArrived_AVG = 0
-        let totalArrived_FRIDAY = 0
-        rows.forEach(function(row) {
-          totalArrived_AVG += row['Arrived_AVG']
-          totalArrived_FRIDAY += row['Arrived_FRIDAY']
-        })
-        return (totalArrived_FRIDAY - totalArrived_AVG) / totalArrived_AVG || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['Arrived_VAR_PERC']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)),
-     
-     
-     
-     md_cnt_AVG = colDef(
-      name = "Mon-Thu Avg",
-      maxWidth = 80,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     md_cnt_FRIDAY = colDef(
-      name = "Fri",
-      maxWidth = 80,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     md_cnt_VAR = colDef(
-      name = "Var",
-      maxWidth = 80,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalmd_cnt_AVG = 0
-        let totalmd_cnt_FRIDAY = 0
-        rows.forEach(function(row) {
-          totalmd_cnt_AVG += row['md_cnt_AVG']
-          totalmd_cnt_FRIDAY += row['md_cnt_FRIDAY']
-        })
-        return (totalmd_cnt_FRIDAY - totalmd_cnt_AVG) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['md_cnt_VAR']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     md_cnt_VAR_PERC = colDef(
-      name = "% Var",
-      maxWidth = 80,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalmd_cnt_AVG = 0
-        let totalmd_cnt_FRIDAY = 0
-        rows.forEach(function(row) {
-          totalmd_cnt_AVG += row['md_cnt_AVG']
-          totalmd_cnt_FRIDAY += row['md_cnt_FRIDAY']
-        })
-        return (totalmd_cnt_FRIDAY - totalmd_cnt_AVG) / totalmd_cnt_AVG || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['md_cnt_VAR_PERC']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)),
-     
-     
-     
-     session_cnt_AVG = colDef(
-      name = "Mon-Thu Avg",
-      maxWidth = 80,
-      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     session_cnt_FRIDAY = colDef(
-      name = "Fri",
-      maxWidth = 80,
-      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     session_cnt_VAR = colDef(
-      name = "Var",
-      maxWidth = 80,
-      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalsession_cnt_AVG = 0
-        let totalsession_cnt_FRIDAY = 0
-        rows.forEach(function(row) {
-          totalsession_cnt_AVG += row['session_cnt_AVG']
-          totalsession_cnt_FRIDAY += row['session_cnt_FRIDAY']
-        })
-        return (totalsession_cnt_FRIDAY - totalsession_cnt_AVG) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['session_cnt_VAR']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     session_cnt_VAR_PERC = colDef(
-      name = "% Var",
-      maxWidth = 80,
-      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalsession_cnt_AVG = 0
-        let totalsession_cnt_FRIDAY = 0
-        rows.forEach(function(row) {
-          totalsession_cnt_AVG += row['session_cnt_AVG']
-          totalsession_cnt_FRIDAY += row['session_cnt_FRIDAY']
-        })
-        return (totalsession_cnt_FRIDAY - totalsession_cnt_AVG) / totalsession_cnt_AVG || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['session_cnt_VAR_PERC']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)),
-     
-     
-     unfilled_cnt_AVG = colDef(
-      name = "Mon-Thu Avg",
-      maxWidth = 80,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     unfilled_cnt_FRIDAY = colDef(
-      name = "Fri",
-      maxWidth = 80,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     unfilled_cnt_VAR = colDef(
-      name = "Var",
-      maxWidth = 80,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalunfilled_cnt_AVG = 0
-        let totalunfilled_cnt_FRIDAY = 0
-        rows.forEach(function(row) {
-          totalunfilled_cnt_AVG += row['unfilled_cnt_AVG']
-          totalunfilled_cnt_FRIDAY += row['unfilled_cnt_FRIDAY']
-        })
-        return (totalunfilled_cnt_FRIDAY - totalunfilled_cnt_AVG) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['unfilled_cnt_VAR']
-        if (value > 0) {
-          var color = '#e00000'
-        } else {
-          var color = '#008000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     unfilled_cnt_VAR_PERC = colDef(
-      name = "% Var",
-      maxWidth = 80,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalunfilled_cnt_AVG = 0
-        let totalunfilled_cnt_FRIDAY = 0
-        rows.forEach(function(row) {
-          totalunfilled_cnt_AVG += row['unfilled_cnt_AVG']
-          totalunfilled_cnt_FRIDAY += row['unfilled_cnt_FRIDAY']
-        })
-        return (totalunfilled_cnt_FRIDAY - totalunfilled_cnt_AVG) / totalunfilled_cnt_AVG || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['unfilled_cnt_VAR_PERC']
-        if (value > 0) {
-          var color = '#e00000'
-        } else {
-          var color = '#008000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)),
-     
-     
-     
-     No_Show_Rate_AVG = colDef(
-      name = "Mon-Thu Avg",
-      maxWidth = 80,
-      headerStyle = list(background = "#a5a7a5", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalNo_Show_AVG = 0
-        let totalCanceled_AVG = 0
-        let totalRescheduled_AVG = 0
-        let totalArrived_AVG = 0
-        rows.forEach(function(row) {
-          totalNo_Show_AVG += row['No_Show_AVG']
-          totalCanceled_AVG += row['Canceled_AVG']
-          totalRescheduled_AVG += row['Rescheduled_AVG']
-          totalArrived_AVG += row['Arrived_AVG']
-        })
-        return (totalNo_Show_AVG + totalCanceled_AVG + totalRescheduled_AVG) / (totalNo_Show_AVG + totalCanceled_AVG + totalRescheduled_AVG + totalArrived_AVG) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['No_Show_Rate_AVG']
-        if (value > 0) {
-          var color = '#e00000'
-        } else {
-          var color = '#008000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)),
-     
-     
-     No_Show_Rate_FRIDAY = colDef(
-      name = "Fri",
-      maxWidth = 80,
-      headerStyle = list(background = "#a5a7a5", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalNo_Show_FRIDAY = 0
-        let totalCanceled_FRIDAY = 0
-        let totalRescheduled_FRIDAY = 0
-        let totalArrived_FRIDAY = 0
-        rows.forEach(function(row) {
-          totalNo_Show_FRIDAY += row['No_Show_FRIDAY']
-          totalCanceled_FRIDAY += row['Canceled_FRIDAY']
-          totalRescheduled_FRIDAY += row['Rescheduled_FRIDAY']
-          totalArrived_FRIDAY += row['Arrived_FRIDAY']
-        })
-        return (totalNo_Show_FRIDAY + totalCanceled_FRIDAY + totalRescheduled_FRIDAY) / 
-        (totalNo_Show_FRIDAY + totalCanceled_FRIDAY + totalRescheduled_FRIDAY + totalArrived_FRIDAY) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['No_Show_Rate_FRIDAY']
-        if (value > 0) {
-          var color = '#e00000'
-        } else {
-          var color = ' #008000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)),
-     
-     appt_year = colDef(show =F),
-     holiday = colDef(show =F),
-     DEPARTMENT_ID = colDef(show =F),
-     PROV_ID = colDef(show =F),
-     NPI = colDef(show =F),
-     Arrived_MONDAY = colDef(show =F),
-     Arrived_TUESDAY = colDef(show =F),
-     Arrived_WEDNESDAY = colDef(show =F),
-     Arrived_THURSDAY = colDef(show =F),
-     Arrived_SATURDAY = colDef(show =F),
-     Arrived_SUNDAY = colDef(show =F),
-     md_cnt_MONDAY = colDef(show =F),
-     md_cnt_TUESDAY = colDef(show =F),
-     md_cnt_WEDNESDAY = colDef(show =F),
-     md_cnt_THURSDAY = colDef(show =F),
-     md_cnt_SATURDAY = colDef(show =F),
-     md_cnt_SUNDAY = colDef(show =F),
-     session_cnt_MONDAY = colDef(show =F),
-     session_cnt_TUESDAY = colDef(show =F),
-     session_cnt_WEDNESDAY = colDef(show =F),
-     session_cnt_THURSDAY = colDef(show =F),
-     session_cnt_SATURDAY = colDef(show =F),
-     session_cnt_SUNDAY = colDef(show =F),
-     unfilled_cnt_MONDAY = colDef(show =F),
-     unfilled_cnt_TUESDAY = colDef(show =F),
-     unfilled_cnt_WEDNESDAY = colDef(show =F),
-     unfilled_cnt_THURSDAY = colDef(show =F),
-     unfilled_cnt_SATURDAY = colDef(show =F),
-     unfilled_cnt_SUNDAY = colDef(show =F),
-     Canceled_MONDAY = colDef(show =F),
-     Canceled_TUESDAY = colDef(show =F),
-     Canceled_WEDNESDAY = colDef(show =F),
-     Canceled_THURSDAY = colDef(show =F),
-     Canceled_FRIDAY = colDef(show =F),
-     Canceled_SATURDAY = colDef(show =F),
-     Canceled_SUNDAY = colDef(show =F),
-     Canceled_AVG = colDef(show =F),
-     Rescheduled_MONDAY = colDef(show =F),
-     Rescheduled_TUESDAY = colDef(show =F),
-     Rescheduled_WEDNESDAY = colDef(show =F),
-     Rescheduled_THURSDAY = colDef(show =F),
-     Rescheduled_FRIDAY = colDef(show =F),
-     Rescheduled_SATURDAY = colDef(show =F),
-     Rescheduled_SUNDAY = colDef(show =F),
-     Rescheduled_AVG = colDef(show =F),
-     No_Show_MONDAY = colDef(show =F),
-     No_Show_TUESDAY = colDef(show =F),
-     No_Show_WEDNESDAY = colDef(show =F),
-     No_Show_THURSDAY = colDef(show =F),
-     No_Show_FRIDAY = colDef(show =F),
-     No_Show_SATURDAY = colDef(show =F),
-     No_Show_SUNDAY = colDef(show =F),
-     No_Show_AVG = colDef(show =F)
-     
-  ) # Close Columns
+<!--   columnGroups = list( -->
+<!--     colGroup(name = "", columns = c("appt_week"), -->
+<!--              headerStyle = list(color = "black", fontSize = "15px"), -->
+<!--              sticky = "left"), -->
+<!--     colGroup(name = "", columns = c("SITE","STANDARD_ADDRESS","DEPT_SPECIALTY_NAME","DEPARTMENT_NAME","PROV_TYPE", "PROV_NAME_WID"), -->
+<!--              headerStyle = list(color = "black", fontSize = "15px")), -->
+<!--     colGroup(name = paste0("Arrived Visits"), -->
+<!--              columns = c("Arrived_AVG", "Arrived_FRIDAY", "Arrived_VAR", "Arrived_VAR_PERC"), -->
+<!--              headerStyle = list(background = "#7f7f7f", color = "white", fontSize = "15px")), -->
+<!--     colGroup(name = paste0("Practicing Physicians"), -->
+<!--              columns = c("md_cnt_AVG", "md_cnt_FRIDAY", "md_cnt_VAR", "md_cnt_VAR_PERC"), -->
+<!--              headerStyle = list(background = "#212070", color = "white", fontSize = "15px")), -->
+<!--     colGroup(name = paste0("Sessions"), -->
+<!--              columns = c("session_cnt_AVG", "session_cnt_FRIDAY", "session_cnt_VAR", "session_cnt_VAR_PERC"), -->
+<!--              headerStyle = list(background = "#d80b8c", color = "white", fontSize = "15px")), -->
+<!--     colGroup(name = paste0("Unfilled Slots"), -->
+<!--              columns = c("unfilled_cnt_AVG", "unfilled_cnt_FRIDAY", "unfilled_cnt_VAR", "unfilled_cnt_VAR_PERC"), -->
+<!--              headerStyle = list(background = "#00aeef", color = "white", fontSize = "15px")), -->
+<!--     colGroup(name = paste0("No Show Rate"), -->
+<!--              columns = c("No_Show_Rate_AVG", "No_Show_Rate_FRIDAY"), -->
+<!--              headerStyle = list(background = "#a5a7a5", color = "white", fontSize = "15px")) -->
+<!--     ), -->
 
-  ) # Close Reactable
-) # Close Taglist
-) # Close htmltools
+<!--   columns = list( -->
+<!-- #  -->
+<!-- #      appt_year = colDef( -->
+<!-- #       name = "Year", -->
+<!-- #       maxWidth = 100), -->
+
+<!--      appt_week = colDef( -->
+<!--       name = "Week", -->
+<!--       minWidth = 200), -->
+
+<!--      SITE = colDef( -->
+<!--       name = "Site", -->
+<!--       minWidth = 200), -->
+
+<!--      STANDARD_ADDRESS = colDef( -->
+<!--       name = "Location", -->
+<!--       minWidth = 400), -->
+
+<!--      DEPT_SPECIALTY_NAME = colDef( -->
+<!--       name = "Specialty", -->
+<!--       minWidth = 200), -->
+
+<!--      DEPARTMENT_NAME = colDef( -->
+<!--       name = "Department", -->
+<!--       minWidth = 200), -->
+
+<!--      PROV_TYPE = colDef( -->
+<!--       name = "Provider Type", -->
+<!--       minWidth = 200), -->
+
+<!--      PROV_NAME_WID = colDef( -->
+<!--       name = "Provider", -->
+<!--       minWidth = 200), -->
+
+<!--      Arrived_AVG = colDef( -->
+<!--       name = "Mon-Thu Avg", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      Arrived_FRIDAY = colDef( -->
+<!--       name = "Fri", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      Arrived_VAR = colDef( -->
+<!--       name = "Var", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalArrived_AVG = 0 -->
+<!--         let totalArrived_FRIDAY = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalArrived_AVG += row['Arrived_AVG'] -->
+<!--           totalArrived_FRIDAY += row['Arrived_FRIDAY'] -->
+<!--         }) -->
+<!--         return (totalArrived_FRIDAY - totalArrived_AVG) || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['Arrived_VAR'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      Arrived_VAR_PERC = colDef( -->
+<!--       name = "% Var", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalArrived_AVG = 0 -->
+<!--         let totalArrived_FRIDAY = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalArrived_AVG += row['Arrived_AVG'] -->
+<!--           totalArrived_FRIDAY += row['Arrived_FRIDAY'] -->
+<!--         }) -->
+<!--         return (totalArrived_FRIDAY - totalArrived_AVG) / totalArrived_AVG || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['Arrived_VAR_PERC'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(percent = TRUE, digits = 1)), -->
 
 
-```
+
+<!--      md_cnt_AVG = colDef( -->
+<!--       name = "Mon-Thu Avg", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      md_cnt_FRIDAY = colDef( -->
+<!--       name = "Fri", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      md_cnt_VAR = colDef( -->
+<!--       name = "Var", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalmd_cnt_AVG = 0 -->
+<!--         let totalmd_cnt_FRIDAY = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalmd_cnt_AVG += row['md_cnt_AVG'] -->
+<!--           totalmd_cnt_FRIDAY += row['md_cnt_FRIDAY'] -->
+<!--         }) -->
+<!--         return (totalmd_cnt_FRIDAY - totalmd_cnt_AVG) || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['md_cnt_VAR'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      md_cnt_VAR_PERC = colDef( -->
+<!--       name = "% Var", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalmd_cnt_AVG = 0 -->
+<!--         let totalmd_cnt_FRIDAY = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalmd_cnt_AVG += row['md_cnt_AVG'] -->
+<!--           totalmd_cnt_FRIDAY += row['md_cnt_FRIDAY'] -->
+<!--         }) -->
+<!--         return (totalmd_cnt_FRIDAY - totalmd_cnt_AVG) / totalmd_cnt_AVG || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['md_cnt_VAR_PERC'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(percent = TRUE, digits = 1)), -->
 
 
-## Performance by Month (Physicians Only)
-*Performance by Week includes all weeks*<br/>
-```{r KPI Tracker by Month}
 
-htmltools::browsable(
-  tagList(
-    tags$button(
-      tagList(fontawesome::fa("download"), "Download Table"),
-      onclick = "Reactable.downloadDataCSV('performance-tracker-month', 'Volume Rebuild Progress')"
-    ),
+<!--      session_cnt_AVG = colDef( -->
+<!--       name = "Mon-Thu Avg", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
 
-# htmltools::browsable(
-#   tagList(
-#     div(tags$label("Summary by", `for` = "access-roi")),
-#     tags$select(
-#       id = "access-roi",
-#       onchange = "Reactable.setGroupBy('access-metrics', this.value ? [this.value] : [])",
-#       tags$option("None", value = ""),
-#       lapply(c("Year", "Month"), tags$option)
-#     ),
-# 
-#     tags$hr("aria-hidden" = "true"),
-    
-reactable(
-  merged_data_month %>%
-    filter(SITE %in% c("MSB", "MSBI", "MSDMG", "MSH- AMBULATORY CARE", "MSH-MSDFP", "MSM", "MSQ",
-                       "MSUS", "MSW", "NETWORK", "NYEE", "MSB")) %>%
-    filter(PROV_TYPE == "Physician"),
-  elementId = "performance-tracker-month",
-  # elementId = "referral-vol-download-table",
-  style = list(fontFamily = 'Calibri',
-                 fontSize = '14px'),
-    defaultColDef = colDef(align = "left",
-                           headerStyle = list(fontWeight = "Bold", fontSize = "14px"),
-                           headerClass = "bar-sort-header"),
-  # RowStyle = function(index) {
-  #           if (index %in% c(nrow(referral_vol_site_data_mshs))) {
-  #             list(`border-top` = "2px solid rgb(184,184,184)",
-  #                  fontWeight = "Bold")
-  #           }
-  #         },
-    highlight = TRUE,
-    # filterable = TRUE,
-    pagination = FALSE,
-    # height = 800,
-    wrap = TRUE,
-  searchable = TRUE,
+<!--      session_cnt_FRIDAY = colDef( -->
+<!--       name = "Fri", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
 
-  groupBy = c("appt_year", "appt_month","SITE","STANDARD_ADDRESS","DEPT_SPECIALTY_NAME","DEPARTMENT_NAME","PROV_TYPE"),
+<!--      session_cnt_VAR = colDef( -->
+<!--       name = "Var", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalsession_cnt_AVG = 0 -->
+<!--         let totalsession_cnt_FRIDAY = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalsession_cnt_AVG += row['session_cnt_AVG'] -->
+<!--           totalsession_cnt_FRIDAY += row['session_cnt_FRIDAY'] -->
+<!--         }) -->
+<!--         return (totalsession_cnt_FRIDAY - totalsession_cnt_AVG) || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['session_cnt_VAR'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
 
-  columnGroups = list(
-    colGroup(name = "", columns = c("appt_year", "appt_month"),
-             headerStyle = list(color = "black", fontSize = "15px"),
-             sticky = "left"),
-    colGroup(name = "", columns = c("SITE","STANDARD_ADDRESS","DEPT_SPECIALTY_NAME","DEPARTMENT_NAME","PROV_TYPE", "PROV_NAME_WID"),
-             headerStyle = list(color = "black", fontSize = "15px")),
-    colGroup(name = paste0("Arrived Visits"),
-             columns = c("Arrived_AVG", "Arrived_FRIDAY", "Arrived_VAR", "Arrived_VAR_PERC"),
-             headerStyle = list(background = "#7f7f7f", color = "white", fontSize = "15px")),
-    colGroup(name = paste0("Practicing Physicians"),
-             columns = c("md_cnt_AVG", "md_cnt_FRIDAY", "md_cnt_VAR", "md_cnt_VAR_PERC"),
-             headerStyle = list(background = "#212070", color = "white", fontSize = "15px")),
-    colGroup(name = paste0("Sessions"),
-             columns = c("session_cnt_AVG", "session_cnt_FRIDAY", "session_cnt_VAR", "session_cnt_VAR_PERC"),
-             headerStyle = list(background = "#d80b8c", color = "white", fontSize = "15px")),
-    colGroup(name = paste0("Unfilled Slots"),
-             columns = c("unfilled_cnt_AVG", "unfilled_cnt_FRIDAY", "unfilled_cnt_VAR", "unfilled_cnt_VAR_PERC"),
-             headerStyle = list(background = "#00aeef", color = "white", fontSize = "15px")),
-    colGroup(name = paste0("No Show Rate"),
-             columns = c("No_Show_Rate_AVG", "No_Show_Rate_FRIDAY"),
-             headerStyle = list(background = "#a5a7a5", color = "white", fontSize = "15px"))
-    ),
-
-  columns = list(
-
-     appt_year = colDef(
-      name = "Year",
-      maxWidth = 100),
-     
-     appt_month = colDef(
-      name = "Week",
-      maxWidth = 200),
-     
-     SITE = colDef(
-      name = "Site",
-      minWidth = 200),
-     
-     STANDARD_ADDRESS = colDef(
-      name = "Location",
-      minWidth = 400),
-     
-     DEPT_SPECIALTY_NAME = colDef(
-      name = "Specialty",
-      minWidth = 200),
-     
-     DEPARTMENT_NAME = colDef(
-      name = "Department",
-      minWidth = 200),
-     
-     PROV_TYPE = colDef(
-      name = "Provider Type",
-      minWidth = 200),
-     
-     PROV_NAME_WID = colDef(
-      name = "Provider",
-      minWidth = 200),
-     
-     Arrived_AVG = colDef(
-      name = "Mon-Thu Avg",
-      maxWidth = 80,
-      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     Arrived_FRIDAY = colDef(
-      name = "Fri",
-      maxWidth = 80,
-      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     Arrived_VAR = colDef(
-      name = "Var",
-      maxWidth = 80,
-      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalArrived_AVG = 0
-        let totalArrived_FRIDAY = 0
-        rows.forEach(function(row) {
-          totalArrived_AVG += row['Arrived_AVG']
-          totalArrived_FRIDAY += row['Arrived_FRIDAY']
-        })
-        return (totalArrived_FRIDAY - totalArrived_AVG) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['Arrived_VAR']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     Arrived_VAR_PERC = colDef(
-      name = "% Var",
-      maxWidth = 80,
-      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalArrived_AVG = 0
-        let totalArrived_FRIDAY = 0
-        rows.forEach(function(row) {
-          totalArrived_AVG += row['Arrived_AVG']
-          totalArrived_FRIDAY += row['Arrived_FRIDAY']
-        })
-        return (totalArrived_FRIDAY - totalArrived_AVG) / totalArrived_AVG || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['Arrived_VAR_PERC']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)),
-     
-     
-     
-     md_cnt_AVG = colDef(
-      name = "Mon-Thu Avg",
-      maxWidth = 80,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     md_cnt_FRIDAY = colDef(
-      name = "Fri",
-      maxWidth = 80,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     md_cnt_VAR = colDef(
-      name = "Var",
-      maxWidth = 80,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalmd_cnt_AVG = 0
-        let totalmd_cnt_FRIDAY = 0
-        rows.forEach(function(row) {
-          totalmd_cnt_AVG += row['md_cnt_AVG']
-          totalmd_cnt_FRIDAY += row['md_cnt_FRIDAY']
-        })
-        return (totalmd_cnt_FRIDAY - totalmd_cnt_AVG) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['md_cnt_VAR']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     md_cnt_VAR_PERC = colDef(
-      name = "% Var",
-      maxWidth = 80,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalmd_cnt_AVG = 0
-        let totalmd_cnt_FRIDAY = 0
-        rows.forEach(function(row) {
-          totalmd_cnt_AVG += row['md_cnt_AVG']
-          totalmd_cnt_FRIDAY += row['md_cnt_FRIDAY']
-        })
-        return (totalmd_cnt_FRIDAY - totalmd_cnt_AVG) / totalmd_cnt_AVG || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['md_cnt_VAR_PERC']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)),
-     
-     
-     
-     session_cnt_AVG = colDef(
-      name = "Mon-Thu Avg",
-      maxWidth = 80,
-      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     session_cnt_FRIDAY = colDef(
-      name = "Fri",
-      maxWidth = 80,
-      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     session_cnt_VAR = colDef(
-      name = "Var",
-      maxWidth = 80,
-      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalsession_cnt_AVG = 0
-        let totalsession_cnt_FRIDAY = 0
-        rows.forEach(function(row) {
-          totalsession_cnt_AVG += row['session_cnt_AVG']
-          totalsession_cnt_FRIDAY += row['session_cnt_FRIDAY']
-        })
-        return (totalsession_cnt_FRIDAY - totalsession_cnt_AVG) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['session_cnt_VAR']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     session_cnt_VAR_PERC = colDef(
-      name = "% Var",
-      maxWidth = 80,
-      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalsession_cnt_AVG = 0
-        let totalsession_cnt_FRIDAY = 0
-        rows.forEach(function(row) {
-          totalsession_cnt_AVG += row['session_cnt_AVG']
-          totalsession_cnt_FRIDAY += row['session_cnt_FRIDAY']
-        })
-        return (totalsession_cnt_FRIDAY - totalsession_cnt_AVG) / totalsession_cnt_AVG || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['session_cnt_VAR_PERC']
-        if (value > 0) {
-          var color = '#008000'
-        } else {
-          var color = ' #e00000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)),
-     
-     
-     unfilled_cnt_AVG = colDef(
-      name = "Mon-Thu Avg",
-      maxWidth = 80,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     unfilled_cnt_FRIDAY = colDef(
-      name = "Fri",
-      maxWidth = 80,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = 'sum',
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     unfilled_cnt_VAR = colDef(
-      name = "Var",
-      maxWidth = 80,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalunfilled_cnt_AVG = 0
-        let totalunfilled_cnt_FRIDAY = 0
-        rows.forEach(function(row) {
-          totalunfilled_cnt_AVG += row['unfilled_cnt_AVG']
-          totalunfilled_cnt_FRIDAY += row['unfilled_cnt_FRIDAY']
-        })
-        return (totalunfilled_cnt_FRIDAY - totalunfilled_cnt_AVG) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['unfilled_cnt_VAR']
-        if (value > 0) {
-          var color = '#e00000'
-        } else {
-          var color = '#008000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(separators = TRUE, digits = 0)),
-     
-     unfilled_cnt_VAR_PERC = colDef(
-      name = "% Var",
-      maxWidth = 80,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalunfilled_cnt_AVG = 0
-        let totalunfilled_cnt_FRIDAY = 0
-        rows.forEach(function(row) {
-          totalunfilled_cnt_AVG += row['unfilled_cnt_AVG']
-          totalunfilled_cnt_FRIDAY += row['unfilled_cnt_FRIDAY']
-        })
-        return (totalunfilled_cnt_FRIDAY - totalunfilled_cnt_AVG) / totalunfilled_cnt_AVG || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['unfilled_cnt_VAR_PERC']
-        if (value > 0) {
-          var color = '#e00000'
-        } else {
-          var color = '#008000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)),
-     
-     
-     
-     No_Show_Rate_AVG = colDef(
-      name = "Mon-Thu Avg",
-      maxWidth = 80,
-      headerStyle = list(background = "#a5a7a5", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalNo_Show_AVG = 0
-        let totalCanceled_AVG = 0
-        let totalRescheduled_AVG = 0
-        let totalArrived_AVG = 0
-        rows.forEach(function(row) {
-          totalNo_Show_AVG += row['No_Show_AVG']
-          totalCanceled_AVG += row['Canceled_AVG']
-          totalRescheduled_AVG += row['Rescheduled_AVG']
-          totalArrived_AVG += row['Arrived_AVG']
-        })
-        return (totalNo_Show_AVG + totalCanceled_AVG + totalRescheduled_AVG) / (totalNo_Show_AVG + totalCanceled_AVG + totalRescheduled_AVG + totalArrived_AVG) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['No_Show_Rate_AVG']
-        if (value > 0) {
-          var color = '#e00000'
-        } else {
-          var color = '#008000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)),
-     
-     
-     No_Show_Rate_FRIDAY = colDef(
-      name = "Fri",
-      maxWidth = 80,
-      headerStyle = list(background = "#a5a7a5", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalNo_Show_FRIDAY = 0
-        let totalCanceled_FRIDAY = 0
-        let totalRescheduled_FRIDAY = 0
-        let totalArrived_FRIDAY = 0
-        rows.forEach(function(row) {
-          totalNo_Show_FRIDAY += row['No_Show_FRIDAY']
-          totalCanceled_FRIDAY += row['Canceled_FRIDAY']
-          totalRescheduled_FRIDAY += row['Rescheduled_FRIDAY']
-          totalArrived_FRIDAY += row['Arrived_FRIDAY']
-        })
-        return (totalNo_Show_FRIDAY + totalCanceled_FRIDAY + totalRescheduled_FRIDAY) / 
-        (totalNo_Show_FRIDAY + totalCanceled_FRIDAY + totalRescheduled_FRIDAY + totalArrived_FRIDAY) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['No_Show_Rate_FRIDAY']
-        if (value > 0) {
-          var color = '#e00000'
-        } else {
-          var color = ' #008000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)),
-     
-     holiday = colDef(show =F),
-     DEPARTMENT_ID = colDef(show =F),
-     PROV_ID = colDef(show =F),
-     NPI = colDef(show =F),
-     Arrived_MONDAY = colDef(show =F),
-     Arrived_TUESDAY = colDef(show =F),
-     Arrived_WEDNESDAY = colDef(show =F),
-     Arrived_THURSDAY = colDef(show =F),
-     Arrived_SATURDAY = colDef(show =F),
-     Arrived_SUNDAY = colDef(show =F),
-     md_cnt_MONDAY = colDef(show =F),
-     md_cnt_TUESDAY = colDef(show =F),
-     md_cnt_WEDNESDAY = colDef(show =F),
-     md_cnt_THURSDAY = colDef(show =F),
-     md_cnt_SATURDAY = colDef(show =F),
-     md_cnt_SUNDAY = colDef(show =F),
-     session_cnt_MONDAY = colDef(show =F),
-     session_cnt_TUESDAY = colDef(show =F),
-     session_cnt_WEDNESDAY = colDef(show =F),
-     session_cnt_THURSDAY = colDef(show =F),
-     session_cnt_SATURDAY = colDef(show =F),
-     session_cnt_SUNDAY = colDef(show =F),
-     unfilled_cnt_MONDAY = colDef(show =F),
-     unfilled_cnt_TUESDAY = colDef(show =F),
-     unfilled_cnt_WEDNESDAY = colDef(show =F),
-     unfilled_cnt_THURSDAY = colDef(show =F),
-     unfilled_cnt_SATURDAY = colDef(show =F),
-     unfilled_cnt_SUNDAY = colDef(show =F),
-     Canceled_MONDAY = colDef(show =F),
-     Canceled_TUESDAY = colDef(show =F),
-     Canceled_WEDNESDAY = colDef(show =F),
-     Canceled_THURSDAY = colDef(show =F),
-     Canceled_FRIDAY = colDef(show =F),
-     Canceled_SATURDAY = colDef(show =F),
-     Canceled_SUNDAY = colDef(show =F),
-     Canceled_AVG = colDef(show =F),
-     Rescheduled_MONDAY = colDef(show =F),
-     Rescheduled_TUESDAY = colDef(show =F),
-     Rescheduled_WEDNESDAY = colDef(show =F),
-     Rescheduled_THURSDAY = colDef(show =F),
-     Rescheduled_FRIDAY = colDef(show =F),
-     Rescheduled_SATURDAY = colDef(show =F),
-     Rescheduled_SUNDAY = colDef(show =F),
-     Rescheduled_AVG = colDef(show =F),
-     No_Show_MONDAY = colDef(show =F),
-     No_Show_TUESDAY = colDef(show =F),
-     No_Show_WEDNESDAY = colDef(show =F),
-     No_Show_THURSDAY = colDef(show =F),
-     No_Show_FRIDAY = colDef(show =F),
-     No_Show_SATURDAY = colDef(show =F),
-     No_Show_SUNDAY = colDef(show =F),
-     No_Show_AVG = colDef(show =F)
-     
-  ) # Close Columns
-
-  ) # Close Reactable
-) # Close Taglist
-) # Close htmltools
+<!--      session_cnt_VAR_PERC = colDef( -->
+<!--       name = "% Var", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalsession_cnt_AVG = 0 -->
+<!--         let totalsession_cnt_FRIDAY = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalsession_cnt_AVG += row['session_cnt_AVG'] -->
+<!--           totalsession_cnt_FRIDAY += row['session_cnt_FRIDAY'] -->
+<!--         }) -->
+<!--         return (totalsession_cnt_FRIDAY - totalsession_cnt_AVG) / totalsession_cnt_AVG || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['session_cnt_VAR_PERC'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(percent = TRUE, digits = 1)), -->
 
 
-```
+<!--      unfilled_cnt_AVG = colDef( -->
+<!--       name = "Mon-Thu Avg", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      unfilled_cnt_FRIDAY = colDef( -->
+<!--       name = "Fri", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      unfilled_cnt_VAR = colDef( -->
+<!--       name = "Var", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalunfilled_cnt_AVG = 0 -->
+<!--         let totalunfilled_cnt_FRIDAY = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalunfilled_cnt_AVG += row['unfilled_cnt_AVG'] -->
+<!--           totalunfilled_cnt_FRIDAY += row['unfilled_cnt_FRIDAY'] -->
+<!--         }) -->
+<!--         return (totalunfilled_cnt_FRIDAY - totalunfilled_cnt_AVG) || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['unfilled_cnt_VAR'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#e00000' -->
+<!--         } else { -->
+<!--           var color = '#008000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      unfilled_cnt_VAR_PERC = colDef( -->
+<!--       name = "% Var", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalunfilled_cnt_AVG = 0 -->
+<!--         let totalunfilled_cnt_FRIDAY = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalunfilled_cnt_AVG += row['unfilled_cnt_AVG'] -->
+<!--           totalunfilled_cnt_FRIDAY += row['unfilled_cnt_FRIDAY'] -->
+<!--         }) -->
+<!--         return (totalunfilled_cnt_FRIDAY - totalunfilled_cnt_AVG) / totalunfilled_cnt_AVG || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['unfilled_cnt_VAR_PERC'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#e00000' -->
+<!--         } else { -->
+<!--           var color = '#008000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(percent = TRUE, digits = 1)), -->
+
+
+
+<!--      No_Show_Rate_AVG = colDef( -->
+<!--       name = "Mon-Thu Avg", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#a5a7a5", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalNo_Show_AVG = 0 -->
+<!--         let totalCanceled_AVG = 0 -->
+<!--         let totalRescheduled_AVG = 0 -->
+<!--         let totalArrived_AVG = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalNo_Show_AVG += row['No_Show_AVG'] -->
+<!--           totalCanceled_AVG += row['Canceled_AVG'] -->
+<!--           totalRescheduled_AVG += row['Rescheduled_AVG'] -->
+<!--           totalArrived_AVG += row['Arrived_AVG'] -->
+<!--         }) -->
+<!--         return (totalNo_Show_AVG + totalCanceled_AVG + totalRescheduled_AVG) / (totalNo_Show_AVG + totalCanceled_AVG + totalRescheduled_AVG + totalArrived_AVG) || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['No_Show_Rate_AVG'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#e00000' -->
+<!--         } else { -->
+<!--           var color = '#008000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(percent = TRUE, digits = 1)), -->
+
+
+<!--      No_Show_Rate_FRIDAY = colDef( -->
+<!--       name = "Fri", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#a5a7a5", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalNo_Show_FRIDAY = 0 -->
+<!--         let totalCanceled_FRIDAY = 0 -->
+<!--         let totalRescheduled_FRIDAY = 0 -->
+<!--         let totalArrived_FRIDAY = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalNo_Show_FRIDAY += row['No_Show_FRIDAY'] -->
+<!--           totalCanceled_FRIDAY += row['Canceled_FRIDAY'] -->
+<!--           totalRescheduled_FRIDAY += row['Rescheduled_FRIDAY'] -->
+<!--           totalArrived_FRIDAY += row['Arrived_FRIDAY'] -->
+<!--         }) -->
+<!--         return (totalNo_Show_FRIDAY + totalCanceled_FRIDAY + totalRescheduled_FRIDAY) /  -->
+<!--         (totalNo_Show_FRIDAY + totalCanceled_FRIDAY + totalRescheduled_FRIDAY + totalArrived_FRIDAY) || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['No_Show_Rate_FRIDAY'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#e00000' -->
+<!--         } else { -->
+<!--           var color = ' #008000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(percent = TRUE, digits = 1)), -->
+
+<!--      appt_year = colDef(show =F), -->
+<!--      holiday = colDef(show =F), -->
+<!--      DEPARTMENT_ID = colDef(show =F), -->
+<!--      PROV_ID = colDef(show =F), -->
+<!--      NPI = colDef(show =F), -->
+<!--      Arrived_MONDAY = colDef(show =F), -->
+<!--      Arrived_TUESDAY = colDef(show =F), -->
+<!--      Arrived_WEDNESDAY = colDef(show =F), -->
+<!--      Arrived_THURSDAY = colDef(show =F), -->
+<!--      Arrived_SATURDAY = colDef(show =F), -->
+<!--      Arrived_SUNDAY = colDef(show =F), -->
+<!--      md_cnt_MONDAY = colDef(show =F), -->
+<!--      md_cnt_TUESDAY = colDef(show =F), -->
+<!--      md_cnt_WEDNESDAY = colDef(show =F), -->
+<!--      md_cnt_THURSDAY = colDef(show =F), -->
+<!--      md_cnt_SATURDAY = colDef(show =F), -->
+<!--      md_cnt_SUNDAY = colDef(show =F), -->
+<!--      session_cnt_MONDAY = colDef(show =F), -->
+<!--      session_cnt_TUESDAY = colDef(show =F), -->
+<!--      session_cnt_WEDNESDAY = colDef(show =F), -->
+<!--      session_cnt_THURSDAY = colDef(show =F), -->
+<!--      session_cnt_SATURDAY = colDef(show =F), -->
+<!--      session_cnt_SUNDAY = colDef(show =F), -->
+<!--      unfilled_cnt_MONDAY = colDef(show =F), -->
+<!--      unfilled_cnt_TUESDAY = colDef(show =F), -->
+<!--      unfilled_cnt_WEDNESDAY = colDef(show =F), -->
+<!--      unfilled_cnt_THURSDAY = colDef(show =F), -->
+<!--      unfilled_cnt_SATURDAY = colDef(show =F), -->
+<!--      unfilled_cnt_SUNDAY = colDef(show =F), -->
+<!--      Canceled_MONDAY = colDef(show =F), -->
+<!--      Canceled_TUESDAY = colDef(show =F), -->
+<!--      Canceled_WEDNESDAY = colDef(show =F), -->
+<!--      Canceled_THURSDAY = colDef(show =F), -->
+<!--      Canceled_FRIDAY = colDef(show =F), -->
+<!--      Canceled_SATURDAY = colDef(show =F), -->
+<!--      Canceled_SUNDAY = colDef(show =F), -->
+<!--      Canceled_AVG = colDef(show =F), -->
+<!--      Rescheduled_MONDAY = colDef(show =F), -->
+<!--      Rescheduled_TUESDAY = colDef(show =F), -->
+<!--      Rescheduled_WEDNESDAY = colDef(show =F), -->
+<!--      Rescheduled_THURSDAY = colDef(show =F), -->
+<!--      Rescheduled_FRIDAY = colDef(show =F), -->
+<!--      Rescheduled_SATURDAY = colDef(show =F), -->
+<!--      Rescheduled_SUNDAY = colDef(show =F), -->
+<!--      Rescheduled_AVG = colDef(show =F), -->
+<!--      No_Show_MONDAY = colDef(show =F), -->
+<!--      No_Show_TUESDAY = colDef(show =F), -->
+<!--      No_Show_WEDNESDAY = colDef(show =F), -->
+<!--      No_Show_THURSDAY = colDef(show =F), -->
+<!--      No_Show_FRIDAY = colDef(show =F), -->
+<!--      No_Show_SATURDAY = colDef(show =F), -->
+<!--      No_Show_SUNDAY = colDef(show =F), -->
+<!--      No_Show_AVG = colDef(show =F) -->
+
+<!--   ) # Close Columns -->
+
+<!--   ) # Close Reactable -->
+<!-- ) # Close Taglist -->
+<!-- ) # Close htmltools -->
+
+
+<!-- ``` -->
+
+
+<!-- ## Performance by Month (Physicians Only) -->
+<!-- *Performance by Week includes all weeks*<br/> -->
+<!-- ```{r KPI Tracker by Month} -->
+
+<!-- htmltools::browsable( -->
+<!--   tagList( -->
+<!--     tags$button( -->
+<!--       tagList(fontawesome::fa("download"), "Download Table"), -->
+<!--       onclick = "Reactable.downloadDataCSV('performance-tracker-month', 'Volume Rebuild Progress')" -->
+<!--     ), -->
+
+<!-- # htmltools::browsable( -->
+<!-- #   tagList( -->
+<!-- #     div(tags$label("Summary by", `for` = "access-roi")), -->
+<!-- #     tags$select( -->
+<!-- #       id = "access-roi", -->
+<!-- #       onchange = "Reactable.setGroupBy('access-metrics', this.value ? [this.value] : [])", -->
+<!-- #       tags$option("None", value = ""), -->
+<!-- #       lapply(c("Year", "Month"), tags$option) -->
+<!-- #     ), -->
+<!-- #  -->
+<!-- #     tags$hr("aria-hidden" = "true"), -->
+
+<!-- reactable( -->
+<!--   merged_data_month %>% -->
+<!--     filter(SITE %in% c("MSB", "MSBI", "MSDMG", "MSH- AMBULATORY CARE", "MSH-MSDFP", "MSM", "MSQ", -->
+<!--                        "MSUS", "MSW", "NETWORK", "NYEE", "MSB")) %>% -->
+<!--     filter(PROV_TYPE == "Physician"), -->
+<!--   elementId = "performance-tracker-month", -->
+<!--   # elementId = "referral-vol-download-table", -->
+<!--   style = list(fontFamily = 'Calibri', -->
+<!--                  fontSize = '14px'), -->
+<!--     defaultColDef = colDef(align = "left", -->
+<!--                            headerStyle = list(fontWeight = "Bold", fontSize = "14px"), -->
+<!--                            headerClass = "bar-sort-header"), -->
+<!--   # RowStyle = function(index) { -->
+<!--   #           if (index %in% c(nrow(referral_vol_site_data_mshs))) { -->
+<!--   #             list(`border-top` = "2px solid rgb(184,184,184)", -->
+<!--   #                  fontWeight = "Bold") -->
+<!--   #           } -->
+<!--   #         }, -->
+<!--     highlight = TRUE, -->
+<!--     # filterable = TRUE, -->
+<!--     pagination = FALSE, -->
+<!--     # height = 800, -->
+<!--     wrap = TRUE, -->
+<!--   searchable = TRUE, -->
+
+<!--   groupBy = c("appt_year", "appt_month","SITE","STANDARD_ADDRESS","DEPT_SPECIALTY_NAME","DEPARTMENT_NAME","PROV_TYPE"), -->
+
+<!--   columnGroups = list( -->
+<!--     colGroup(name = "", columns = c("appt_year", "appt_month"), -->
+<!--              headerStyle = list(color = "black", fontSize = "15px"), -->
+<!--              sticky = "left"), -->
+<!--     colGroup(name = "", columns = c("SITE","STANDARD_ADDRESS","DEPT_SPECIALTY_NAME","DEPARTMENT_NAME","PROV_TYPE", "PROV_NAME_WID"), -->
+<!--              headerStyle = list(color = "black", fontSize = "15px")), -->
+<!--     colGroup(name = paste0("Arrived Visits"), -->
+<!--              columns = c("Arrived_AVG", "Arrived_FRIDAY", "Arrived_VAR", "Arrived_VAR_PERC"), -->
+<!--              headerStyle = list(background = "#7f7f7f", color = "white", fontSize = "15px")), -->
+<!--     colGroup(name = paste0("Practicing Physicians"), -->
+<!--              columns = c("md_cnt_AVG", "md_cnt_FRIDAY", "md_cnt_VAR", "md_cnt_VAR_PERC"), -->
+<!--              headerStyle = list(background = "#212070", color = "white", fontSize = "15px")), -->
+<!--     colGroup(name = paste0("Sessions"), -->
+<!--              columns = c("session_cnt_AVG", "session_cnt_FRIDAY", "session_cnt_VAR", "session_cnt_VAR_PERC"), -->
+<!--              headerStyle = list(background = "#d80b8c", color = "white", fontSize = "15px")), -->
+<!--     colGroup(name = paste0("Unfilled Slots"), -->
+<!--              columns = c("unfilled_cnt_AVG", "unfilled_cnt_FRIDAY", "unfilled_cnt_VAR", "unfilled_cnt_VAR_PERC"), -->
+<!--              headerStyle = list(background = "#00aeef", color = "white", fontSize = "15px")), -->
+<!--     colGroup(name = paste0("No Show Rate"), -->
+<!--              columns = c("No_Show_Rate_AVG", "No_Show_Rate_FRIDAY"), -->
+<!--              headerStyle = list(background = "#a5a7a5", color = "white", fontSize = "15px")) -->
+<!--     ), -->
+
+<!--   columns = list( -->
+
+<!--      appt_year = colDef( -->
+<!--       name = "Year", -->
+<!--       maxWidth = 100), -->
+
+<!--      appt_month = colDef( -->
+<!--       name = "Week", -->
+<!--       maxWidth = 200), -->
+
+<!--      SITE = colDef( -->
+<!--       name = "Site", -->
+<!--       minWidth = 200), -->
+
+<!--      STANDARD_ADDRESS = colDef( -->
+<!--       name = "Location", -->
+<!--       minWidth = 400), -->
+
+<!--      DEPT_SPECIALTY_NAME = colDef( -->
+<!--       name = "Specialty", -->
+<!--       minWidth = 200), -->
+
+<!--      DEPARTMENT_NAME = colDef( -->
+<!--       name = "Department", -->
+<!--       minWidth = 200), -->
+
+<!--      PROV_TYPE = colDef( -->
+<!--       name = "Provider Type", -->
+<!--       minWidth = 200), -->
+
+<!--      PROV_NAME_WID = colDef( -->
+<!--       name = "Provider", -->
+<!--       minWidth = 200), -->
+
+<!--      Arrived_AVG = colDef( -->
+<!--       name = "Mon-Thu Avg", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      Arrived_FRIDAY = colDef( -->
+<!--       name = "Fri", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      Arrived_VAR = colDef( -->
+<!--       name = "Var", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalArrived_AVG = 0 -->
+<!--         let totalArrived_FRIDAY = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalArrived_AVG += row['Arrived_AVG'] -->
+<!--           totalArrived_FRIDAY += row['Arrived_FRIDAY'] -->
+<!--         }) -->
+<!--         return (totalArrived_FRIDAY - totalArrived_AVG) || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['Arrived_VAR'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      Arrived_VAR_PERC = colDef( -->
+<!--       name = "% Var", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalArrived_AVG = 0 -->
+<!--         let totalArrived_FRIDAY = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalArrived_AVG += row['Arrived_AVG'] -->
+<!--           totalArrived_FRIDAY += row['Arrived_FRIDAY'] -->
+<!--         }) -->
+<!--         return (totalArrived_FRIDAY - totalArrived_AVG) / totalArrived_AVG || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['Arrived_VAR_PERC'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(percent = TRUE, digits = 1)), -->
+
+
+
+<!--      md_cnt_AVG = colDef( -->
+<!--       name = "Mon-Thu Avg", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      md_cnt_FRIDAY = colDef( -->
+<!--       name = "Fri", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      md_cnt_VAR = colDef( -->
+<!--       name = "Var", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalmd_cnt_AVG = 0 -->
+<!--         let totalmd_cnt_FRIDAY = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalmd_cnt_AVG += row['md_cnt_AVG'] -->
+<!--           totalmd_cnt_FRIDAY += row['md_cnt_FRIDAY'] -->
+<!--         }) -->
+<!--         return (totalmd_cnt_FRIDAY - totalmd_cnt_AVG) || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['md_cnt_VAR'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      md_cnt_VAR_PERC = colDef( -->
+<!--       name = "% Var", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalmd_cnt_AVG = 0 -->
+<!--         let totalmd_cnt_FRIDAY = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalmd_cnt_AVG += row['md_cnt_AVG'] -->
+<!--           totalmd_cnt_FRIDAY += row['md_cnt_FRIDAY'] -->
+<!--         }) -->
+<!--         return (totalmd_cnt_FRIDAY - totalmd_cnt_AVG) / totalmd_cnt_AVG || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['md_cnt_VAR_PERC'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(percent = TRUE, digits = 1)), -->
+
+
+
+<!--      session_cnt_AVG = colDef( -->
+<!--       name = "Mon-Thu Avg", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      session_cnt_FRIDAY = colDef( -->
+<!--       name = "Fri", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      session_cnt_VAR = colDef( -->
+<!--       name = "Var", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalsession_cnt_AVG = 0 -->
+<!--         let totalsession_cnt_FRIDAY = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalsession_cnt_AVG += row['session_cnt_AVG'] -->
+<!--           totalsession_cnt_FRIDAY += row['session_cnt_FRIDAY'] -->
+<!--         }) -->
+<!--         return (totalsession_cnt_FRIDAY - totalsession_cnt_AVG) || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['session_cnt_VAR'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      session_cnt_VAR_PERC = colDef( -->
+<!--       name = "% Var", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalsession_cnt_AVG = 0 -->
+<!--         let totalsession_cnt_FRIDAY = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalsession_cnt_AVG += row['session_cnt_AVG'] -->
+<!--           totalsession_cnt_FRIDAY += row['session_cnt_FRIDAY'] -->
+<!--         }) -->
+<!--         return (totalsession_cnt_FRIDAY - totalsession_cnt_AVG) / totalsession_cnt_AVG || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['session_cnt_VAR_PERC'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#008000' -->
+<!--         } else { -->
+<!--           var color = ' #e00000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(percent = TRUE, digits = 1)), -->
+
+
+<!--      unfilled_cnt_AVG = colDef( -->
+<!--       name = "Mon-Thu Avg", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      unfilled_cnt_FRIDAY = colDef( -->
+<!--       name = "Fri", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = 'sum', -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      unfilled_cnt_VAR = colDef( -->
+<!--       name = "Var", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalunfilled_cnt_AVG = 0 -->
+<!--         let totalunfilled_cnt_FRIDAY = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalunfilled_cnt_AVG += row['unfilled_cnt_AVG'] -->
+<!--           totalunfilled_cnt_FRIDAY += row['unfilled_cnt_FRIDAY'] -->
+<!--         }) -->
+<!--         return (totalunfilled_cnt_FRIDAY - totalunfilled_cnt_AVG) || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['unfilled_cnt_VAR'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#e00000' -->
+<!--         } else { -->
+<!--           var color = '#008000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(separators = TRUE, digits = 0)), -->
+
+<!--      unfilled_cnt_VAR_PERC = colDef( -->
+<!--       name = "% Var", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalunfilled_cnt_AVG = 0 -->
+<!--         let totalunfilled_cnt_FRIDAY = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalunfilled_cnt_AVG += row['unfilled_cnt_AVG'] -->
+<!--           totalunfilled_cnt_FRIDAY += row['unfilled_cnt_FRIDAY'] -->
+<!--         }) -->
+<!--         return (totalunfilled_cnt_FRIDAY - totalunfilled_cnt_AVG) / totalunfilled_cnt_AVG || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['unfilled_cnt_VAR_PERC'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#e00000' -->
+<!--         } else { -->
+<!--           var color = '#008000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(percent = TRUE, digits = 1)), -->
+
+
+
+<!--      No_Show_Rate_AVG = colDef( -->
+<!--       name = "Mon-Thu Avg", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#a5a7a5", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalNo_Show_AVG = 0 -->
+<!--         let totalCanceled_AVG = 0 -->
+<!--         let totalRescheduled_AVG = 0 -->
+<!--         let totalArrived_AVG = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalNo_Show_AVG += row['No_Show_AVG'] -->
+<!--           totalCanceled_AVG += row['Canceled_AVG'] -->
+<!--           totalRescheduled_AVG += row['Rescheduled_AVG'] -->
+<!--           totalArrived_AVG += row['Arrived_AVG'] -->
+<!--         }) -->
+<!--         return (totalNo_Show_AVG + totalCanceled_AVG + totalRescheduled_AVG) / (totalNo_Show_AVG + totalCanceled_AVG + totalRescheduled_AVG + totalArrived_AVG) || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['No_Show_Rate_AVG'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#e00000' -->
+<!--         } else { -->
+<!--           var color = '#008000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(percent = TRUE, digits = 1)), -->
+
+
+<!--      No_Show_Rate_FRIDAY = colDef( -->
+<!--       name = "Fri", -->
+<!--       maxWidth = 80, -->
+<!--       headerStyle = list(background = "#a5a7a5", color = "white", fontWeight = "Bold", fontSize = "14px"), -->
+<!--       aggregate = JS("function(values, rows) { -->
+<!--         let totalNo_Show_FRIDAY = 0 -->
+<!--         let totalCanceled_FRIDAY = 0 -->
+<!--         let totalRescheduled_FRIDAY = 0 -->
+<!--         let totalArrived_FRIDAY = 0 -->
+<!--         rows.forEach(function(row) { -->
+<!--           totalNo_Show_FRIDAY += row['No_Show_FRIDAY'] -->
+<!--           totalCanceled_FRIDAY += row['Canceled_FRIDAY'] -->
+<!--           totalRescheduled_FRIDAY += row['Rescheduled_FRIDAY'] -->
+<!--           totalArrived_FRIDAY += row['Arrived_FRIDAY'] -->
+<!--         }) -->
+<!--         return (totalNo_Show_FRIDAY + totalCanceled_FRIDAY + totalRescheduled_FRIDAY) /  -->
+<!--         (totalNo_Show_FRIDAY + totalCanceled_FRIDAY + totalRescheduled_FRIDAY + totalArrived_FRIDAY) || '-' -->
+<!--       }"), -->
+<!--       style = JS("function(rowInfo) { -->
+<!--         var value = rowInfo.row['No_Show_Rate_FRIDAY'] -->
+<!--         if (value > 0) { -->
+<!--           var color = '#e00000' -->
+<!--         } else { -->
+<!--           var color = ' #008000' -->
+<!--         } -->
+<!--         return { color: color, fontFamily: 'calibri', fontWeight: 'bold'} -->
+<!--       }"), -->
+<!--       format = colFormat(percent = TRUE, digits = 1)), -->
+
+<!--      holiday = colDef(show =F), -->
+<!--      DEPARTMENT_ID = colDef(show =F), -->
+<!--      PROV_ID = colDef(show =F), -->
+<!--      NPI = colDef(show =F), -->
+<!--      Arrived_MONDAY = colDef(show =F), -->
+<!--      Arrived_TUESDAY = colDef(show =F), -->
+<!--      Arrived_WEDNESDAY = colDef(show =F), -->
+<!--      Arrived_THURSDAY = colDef(show =F), -->
+<!--      Arrived_SATURDAY = colDef(show =F), -->
+<!--      Arrived_SUNDAY = colDef(show =F), -->
+<!--      md_cnt_MONDAY = colDef(show =F), -->
+<!--      md_cnt_TUESDAY = colDef(show =F), -->
+<!--      md_cnt_WEDNESDAY = colDef(show =F), -->
+<!--      md_cnt_THURSDAY = colDef(show =F), -->
+<!--      md_cnt_SATURDAY = colDef(show =F), -->
+<!--      md_cnt_SUNDAY = colDef(show =F), -->
+<!--      session_cnt_MONDAY = colDef(show =F), -->
+<!--      session_cnt_TUESDAY = colDef(show =F), -->
+<!--      session_cnt_WEDNESDAY = colDef(show =F), -->
+<!--      session_cnt_THURSDAY = colDef(show =F), -->
+<!--      session_cnt_SATURDAY = colDef(show =F), -->
+<!--      session_cnt_SUNDAY = colDef(show =F), -->
+<!--      unfilled_cnt_MONDAY = colDef(show =F), -->
+<!--      unfilled_cnt_TUESDAY = colDef(show =F), -->
+<!--      unfilled_cnt_WEDNESDAY = colDef(show =F), -->
+<!--      unfilled_cnt_THURSDAY = colDef(show =F), -->
+<!--      unfilled_cnt_SATURDAY = colDef(show =F), -->
+<!--      unfilled_cnt_SUNDAY = colDef(show =F), -->
+<!--      Canceled_MONDAY = colDef(show =F), -->
+<!--      Canceled_TUESDAY = colDef(show =F), -->
+<!--      Canceled_WEDNESDAY = colDef(show =F), -->
+<!--      Canceled_THURSDAY = colDef(show =F), -->
+<!--      Canceled_FRIDAY = colDef(show =F), -->
+<!--      Canceled_SATURDAY = colDef(show =F), -->
+<!--      Canceled_SUNDAY = colDef(show =F), -->
+<!--      Canceled_AVG = colDef(show =F), -->
+<!--      Rescheduled_MONDAY = colDef(show =F), -->
+<!--      Rescheduled_TUESDAY = colDef(show =F), -->
+<!--      Rescheduled_WEDNESDAY = colDef(show =F), -->
+<!--      Rescheduled_THURSDAY = colDef(show =F), -->
+<!--      Rescheduled_FRIDAY = colDef(show =F), -->
+<!--      Rescheduled_SATURDAY = colDef(show =F), -->
+<!--      Rescheduled_SUNDAY = colDef(show =F), -->
+<!--      Rescheduled_AVG = colDef(show =F), -->
+<!--      No_Show_MONDAY = colDef(show =F), -->
+<!--      No_Show_TUESDAY = colDef(show =F), -->
+<!--      No_Show_WEDNESDAY = colDef(show =F), -->
+<!--      No_Show_THURSDAY = colDef(show =F), -->
+<!--      No_Show_FRIDAY = colDef(show =F), -->
+<!--      No_Show_SATURDAY = colDef(show =F), -->
+<!--      No_Show_SUNDAY = colDef(show =F), -->
+<!--      No_Show_AVG = colDef(show =F) -->
+
+<!--   ) # Close Columns -->
+
+<!--   ) # Close Reactable -->
+<!-- ) # Close Taglist -->
+<!-- ) # Close htmltools -->
+
+
+<!-- ``` -->
 
 
