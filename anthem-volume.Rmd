@@ -347,10 +347,12 @@ dep_mapping <- dep_mapping_tbl %>%
   # dplyr::select(DEPARTMENT_ID, SPECIALTY) %>%
   collect()
 
-clarity_ser_tbl <- tbl(conn2, "CLARITY_SER")
+clarity_ser_tbl <- tbl(conn2, "CLARITY_SER") 
 clarity_ser_2_tbl <- tbl(conn2, "CLARITY_SER_2")
 
 finclass_tbl <- tbl(conn2, "V_PB_EPP_CUSTOM_PRD_TYPE")
+
+pat_enc_3_tbl <- tbl(conn2, "PAT_ENC_3")
 
 
 # Local Connection ---------------------------------------------------
@@ -1503,7 +1505,6 @@ merged_data <- merged_data %>%
 date_start <- as.Date("2026-1-1")
 date_end <- as.Date(Sys.Date() - 1)
 date_end <- date_end - as.integer(format(date_end, "%u"))
-
 
 
 ## Arrived Volume and No Show Rate Comparison ----------------------------------
@@ -3416,19 +3417,24 @@ future_mcr_adv_ind_mrkt_export <- access_raw_tbl %>%
               dplyr::select(PLAN_NAME, PRD_TYPE) %>%
               distinct(), 
             by = c("VISITPLAN" = "PLAN_NAME")) %>%
-  left_join(tbl(conn2, "PATIENT_FYI_FLAGS") %>%
-              filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)) %>%
-              group_by(PATIENT_ID) %>%
-              filter(LAST_UPDATE_INST == max(LAST_UPDATE_INST, na.rm = TRUE)) %>%
-              filter(ACCT_NOTE_INSTANT == max(ACCT_NOTE_INSTANT)) %>%
-              dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C),
-            by = c("PAT_ID" = "PATIENT_ID")) %>%
+  left_join(pat_enc_3_tbl %>%
+              dplyr::select(PAT_ENC_CSN, DO_NOT_BILL_INS_YN) %>%
+              rename("PAT_ENC_CSN_ID" = PAT_ENC_CSN)) %>%
+  filter(is.na(DO_NOT_BILL_INS_YN) | DO_NOT_BILL_INS_YN == "N") %>%
+  # left_join(tbl(conn2, "PATIENT_FYI_FLAGS") %>%
+  #             filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)) %>%
+            #   group_by(PATIENT_ID) %>%
+            #   filter(LAST_UPDATE_INST == max(LAST_UPDATE_INST, na.rm = TRUE)) %>%
+            #   filter(ACCT_NOTE_INSTANT == max(ACCT_NOTE_INSTANT)) %>%
+            #   dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C),
+            # by = c("PAT_ID" = "PATIENT_ID")) %>%
   mutate(FINCLASS = case_when(PRD_TYPE == "EXCHANGE" ~ "EXCHANGE", TRUE ~ FINCLASS)) %>%
   filter(VISITPLAN %in% anthem_mcr_adv_list | VISITPLAN %in% anthem_individual_list) %>%
   mutate(ANTHEM = case_when(VISITPLAN %in% anthem_mcr_adv_list ~ "Anthem Medicare_Advantage",
                             VISITPLAN %in% anthem_individual_list ~ "Anthem Individual_Marketplace") )%>%
   filter(year(CONTACT_DATE)==2026) %>%
   filter(DERIVED_STATUS_DESC == "Scheduled") %>%
+  filter(APPT_DTTM > TO_DATE(report_run_date, "YYYY-MM-DD HH24:MI:SS")) %>%
   dplyr::select(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, PROV_NAME_WID, 
                 PAT_ENC_CSN_ID, PAT_NAME, MRN, APPT_DTTM, APPT_MADE_DTTM, APPT_STATUS_NAME, PRC_NAME, 
                 VISIT_TYPE, VISITPLAN, ANTHEM, FINCLASS, SCHED_METHOD) %>%
