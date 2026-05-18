@@ -561,12 +561,12 @@ date_end_2026 <- format(Sys.Date()-1, "%Y-%m-%d")
 # date_end_2025 <- format(as.Date(paste0("2025-",format(as.Date("2026-03-31")+1, "%m-%d"))), "%Y-%m-%d")
 # date_end_2026 <-  format(as.Date("2026-03-31"), "%Y-%m-%d")
 
-
-date_start_2025 <- format(as.Date("2025-01-06"), "%Y-%m-%d")
-date_end_2025 <- format(as.Date("2025-05-01"), "%Y-%m-%d")
-
-date_start_2026 <- format(as.Date("2026-01-05"), "%Y-%m-%d")
-date_end_2026 <- format(as.Date("2026-04-30"), "%Y-%m-%d")
+# 
+# date_start_2025 <- format(as.Date("2025-01-06"), "%Y-%m-%d")
+# date_end_2025 <- format(as.Date("2025-05-01"), "%Y-%m-%d")
+# 
+# date_start_2026 <- format(as.Date("2026-01-05"), "%Y-%m-%d")
+# date_end_2026 <- format(as.Date("2026-04-30"), "%Y-%m-%d")
 
 # jan_vol_plans <- jan_vol %>%
 #   left_join(anthem_plans2,
@@ -1064,18 +1064,18 @@ date_last_7days <- format(Sys.Date() -7, "%Y-%m-%d")
 last_7day_bookings <- access_raw_tbl %>%
   left_join(f_sched_appt_tbl %>%
               dplyr::select(PAT_ENC_CSN_ID, PAT_ONLINE_YN)) %>%
-  left_join(finclass_tbl %>% 
+  left_join(finclass_tbl %>%
               filter(PRD_TYPE == "EXCHANGE") %>%
               dplyr::select(PLAN_NAME, PRD_TYPE) %>%
-              distinct(), 
+              distinct(),
             by = c("VISITPLAN" = "PLAN_NAME")) %>%
-  left_join(tbl(conn2, "PATIENT_FYI_FLAGS") %>%
-              filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)) %>%
-              group_by(PATIENT_ID) %>%
-              filter(LAST_UPDATE_INST == max(LAST_UPDATE_INST, na.rm = TRUE)) %>%
-              filter(ACCT_NOTE_INSTANT == max(ACCT_NOTE_INSTANT)) %>%
-              dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C),
-            by = c("PAT_ID" = "PATIENT_ID")) %>%
+  # left_join(tbl(conn2, "PATIENT_FYI_FLAGS") %>%
+  #             filter(PAT_FLAG_TYPE_C %in% c(2108, 2109, 2110)) %>%
+  #             group_by(PATIENT_ID) %>%
+  #             filter(LAST_UPDATE_INST == max(LAST_UPDATE_INST, na.rm = TRUE)) %>%
+  #             filter(ACCT_NOTE_INSTANT == max(ACCT_NOTE_INSTANT)) %>%
+  #             dplyr::select(PATIENT_ID, PAT_FLAG_TYPE_C),
+  #           by = c("PAT_ID" = "PATIENT_ID")) %>%
   mutate(FINCLASS = case_when(PRD_TYPE == "EXCHANGE" ~ "EXCHANGE", TRUE ~ FINCLASS)) %>%
   mutate(MSS_GROUP = case_when(GROUP_NUM %in% mss_exclusion_list ~ "MSS", TRUE ~ "")) %>%
   mutate(ANTHEM = case_when(VISITPLAN %in% anthem_plan_list ~ "Anthem", TRUE ~ NA)) %>%
